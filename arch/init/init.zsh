@@ -1,4 +1,6 @@
 #!/usr/bin/zsh
 
 # All the stuff I do to get my environment where I want it
-# TODO
+source ./fs
+source ./install/pacman.zsh
+source ./isntall/gaming.zsh
