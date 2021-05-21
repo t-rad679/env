@@ -1,10 +1,8 @@
 #!/usr/bin/zsh
 
 # Runs the setup scripts in the proper order
+source $ZSH_CUSTOM/env/highlight.zsh
 
-source highlight.zsh
-
-source alias.zsh
-source fs.zsh
-source path.zsh
-source startup.zsh
+source $ZSH_CUSTOM/env/alias.zsh
+source $ZSH_CUSTOM/env/path.zsh
+source $ZSH_CUSTOM/env/startup.zsh
