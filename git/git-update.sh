@@ -9,7 +9,7 @@
 #     git update <default_branch_name>
 
 BRANCH="$(git branch --show-current)"
-DEFAULT_BRANCH=develop
+DEFAULT_BRANCH=master
 if [ ! -z "$1" ]; then
 	DEFAULT_BRANCH="$1"
 fi
