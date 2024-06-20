@@ -1,0 +1,7 @@
+ohmyzsh/ohmyzsh path:lib
+ohmyzsh/ohmyzsh path:plugins/bazel
+ohmyzsh/ohmyzsh path:plugins/fzf
+
+z-shell/F-Sy-H
+zsh-users/zsh-autosuggestions
+romkatv/powerlevel10k

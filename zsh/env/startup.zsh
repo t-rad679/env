@@ -2,4 +2,4 @@
 
 # Start processes to run in background
 
-eval $(ssh-agent)
+eval $(ssh-agent) &> /dev/null

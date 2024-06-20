@@ -1,7 +1,7 @@
 #!/bin/zsh
 
-alias la="ls -al"
 alias ls=lsd
+alias la="lsd -al"
 
 alias vi=vim
 
