@@ -1,0 +1,12 @@
+# Git aliases that expose the helper scripts in this directory as native git
+# subcommands. Wired into the global config via `git config --global
+# include.path` (see arch/init/git.zsh).
+#
+#   git update [default-branch]   -> git-update.sh
+#   git cleanup                   -> git-cleanup.sh
+#   git rename-branch old new     -> git-rename-branch.sh
+
+[alias]
+	update = "!bash $HOME/src/env/git/git-update.sh"
+	cleanup = "!bash $HOME/src/env/git/git-cleanup.sh"
+	rename-branch = "!bash $HOME/src/env/git/git-rename-branch.sh"

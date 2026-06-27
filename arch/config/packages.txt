@@ -1,0 +1,10 @@
+# Packages to always install on a fresh setup.
+#
+# One package per line. Blank lines and lines starting with # are ignored.
+# Installed by arch/init/install/pacman.zsh via `yay -S`, so both official-repo
+# and AUR packages are fine.
+
+lsd
+vim
+xclip
+fzf
