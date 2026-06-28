@@ -8,3 +8,7 @@ lsd
 vim
 xclip
 fzf
+ttf-meslo-nerd
+obsidian
+claude-code
+nvm
