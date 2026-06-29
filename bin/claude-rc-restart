@@ -1,0 +1,8 @@
+#!/usr/bin/zsh
+# Restart the claude-remote-control user service (Claude Code in Remote Control
+# mode). Use after the session dies, gets stuck, or you want a fresh URL.
+# Companion to claude-rc-url, which prints the new session URL.
+set -e
+SERVICE=claude-remote-control.service
+systemctl --user restart "$SERVICE"
+echo "restarted $SERVICE" >&2

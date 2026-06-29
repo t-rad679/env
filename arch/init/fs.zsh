@@ -2,5 +2,4 @@
 
 # Create necessary files/directories in the filesystem
 
-mkdir ~/src
-mkdir ~/bin
+mkdir -p ~/src ~/bin

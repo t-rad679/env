@@ -1,0 +1,7 @@
+#!/bin/sh
+# Print the current Claude Code Remote Control session URL (and name).
+# Reads the live TUI typescript captured by the claude-remote-control user service.
+SCREEN="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-rc.screen"
+[ -r "$SCREEN" ] || { echo "no active remote-control session (is claude-remote-control.service running?)" >&2; exit 1; }
+sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g; s/\r/\n/g' "$SCREEN" \
+  | grep -oE 'https://claude\.ai/code/session_[A-Za-z0-9]+' | tail -1

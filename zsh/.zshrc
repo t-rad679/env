@@ -7,17 +7,40 @@ fi
 
 autoload -U +X compinit && compinit
 
-source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
-FZF_BASE=$(brew --prefix)/opt/fzf
-antidote load
+# --- antidote (zsh plugin manager) ---
+# Source antidote from wherever it lives on this machine and load the plugins
+# listed in ~/.zsh_plugins.txt:
+#   macOS -> Homebrew    Arch -> AUR `antidote`    fallback -> git clone ~/.antidote
+_antidote_candidates=()
+if command -v brew &> /dev/null; then
+  _antidote_candidates+="$(brew --prefix)/opt/antidote/share/antidote/antidote.zsh"
+  export FZF_BASE="$(brew --prefix)/opt/fzf"
+fi
+_antidote_candidates+=(
+  /usr/share/antidote/antidote.zsh
+  /usr/share/zsh/plugins/antidote/antidote.zsh
+  "$HOME/.antidote/antidote.zsh"
+)
 
-# Load custom scripts
+_antidote_found=0
+for _f in $_antidote_candidates; do
+  if [[ -r $_f ]]; then
+    source $_f
+    antidote load          # reads ~/.zsh_plugins.txt
+    _antidote_found=1
+    break
+  fi
+done
+(( _antidote_found )) || print -u2 "antidote not found -- run: git clone --depth=1 https://github.com/mattmc3/antidote.git ~/.antidote"
+unset _f _antidote_found _antidote_candidates
+
+# Load custom scripts. antidote has no $ZSH_CUSTOM auto-loader, so source every
+# *.zsh directly, in alphabetical order.
 export ZSH_CUSTOM=~/env
 
-if [ -f $ZSH_CUSTOM/env_setup.zsh ]; then
-    source $ZSH_CUSTOM/env_setup.zsh
-fi
+for script in $ZSH_CUSTOM/*.zsh(N); do
+    source $script
+done
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
