@@ -7,3 +7,9 @@ fi
 if [ -d ~/.local/bin ]; then
     export PATH=~/.local/bin:$PATH
 fi
+
+if [ -d ~/.pub-cache/bin ]; then 
+    export PATH=~/.pub-cache/bin:$PATH
+fi
+
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"

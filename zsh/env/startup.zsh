@@ -2,4 +2,7 @@
 
 # Start processes to run in background
 
-eval $(ssh-agent) &> /dev/null
+if [ -z "$SSH_AUTH_SOCK" ]; then
+   eval $(ssh-agent -s)
+fi
+

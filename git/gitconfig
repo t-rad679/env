@@ -1,0 +1,10 @@
+[user]
+	name = t-rad679
+	email = trevor.radcliffe@gmail.com
+[credential]
+	helper = 
+	helper = /usr/local/share/gcm-core/git-credential-manager
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+[alias]
+	cleanup = !\"$HOME/bin/git_cleanup.zsh\"
