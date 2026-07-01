@@ -27,8 +27,9 @@ The four current scripts have no load-order dependencies. If you add scripts tha
 2. `install/pacman.zsh` — swap in this repo's `pacman.conf`, install git, bootstrap yay (`install/yay.zsh`), `yay -Syu`, then install everything in `arch/config/packages.txt`
 3. `install/antidote.zsh` — install the antidote zsh plugin manager (git clone to `~/.antidote`; idempotent)
 4. `links.zsh` — symlink `zsh/.zshrc` → `~/.zshrc`, `zsh/.zsh_plugins.txt` → `~/.zsh_plugins.txt`, and `zsh/env/` → `~/env`; also `chsh` to zsh (login shell). Note: `antidote` is a zsh *function* loaded by the zshrc, not a binary — it only exists inside an interactive zsh once `~/.antidote` is cloned.
-5. `git.zsh` — wire git helper scripts into git via `git config --global include.path`
-6. `gaming.zsh` — gaming/nvidia packages via yay (runs last: big, optional, AUR-heavy)
+5. `install/lightdm.zsh` — symlink `arch/config/lightdm.conf.d/50-resolution.conf` → `/etc/lightdm/lightdm.conf.d/50-resolution.conf` (sets the greeter to 1920x1080 on HDMI-3 via `display-setup-script`; same symlink-into-the-repo pattern as `pacman.conf`)
+6. `git.zsh` — wire git helper scripts into git via `git config --global include.path`
+7. `gaming.zsh` — gaming/nvidia packages via yay (runs last: big, optional, AUR-heavy)
 
 These scripts are destructive/system-level (move `/etc/pacman.conf`, install packages) and are meant to run once on a fresh Arch install. To always install a package, add it to `arch/config/packages.txt` (one per line, `#` for comments; repo or AUR).
 

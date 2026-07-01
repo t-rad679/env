@@ -11,8 +11,10 @@ export ENV_DIR="${ENV_DIR:-$HOME/src/env}"
 source "$ENV_DIR/arch/init/fs.zsh"               # base directories
 source "$ENV_DIR/arch/init/install/pacman.zsh"   # pacman.conf, git, yay, update, my packages
 source "$ENV_DIR/arch/init/install/antidote.zsh" # antidote zsh plugin manager
+source "$ENV_DIR/arch/init/install/node.zsh"     # node via nvm (nvm pkg from pacman step)
 source "$ENV_DIR/arch/init/links.zsh"            # symlink ~/.zshrc and env scripts
 source "$ENV_DIR/arch/init/claude.zsh"           # symlink Claude config and user skills
+source "$ENV_DIR/arch/init/install/lightdm.zsh"  # LightDM drop-in (greeter resolution)
 source "$ENV_DIR/arch/init/git.zsh"              # wire git helper scripts into git
 # Gaming last: big, optional, AUR-heavy -- keep it after the essential setup so a
 # flaky package never blocks dotfiles/git wiring.
