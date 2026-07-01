@@ -12,3 +12,7 @@ ttf-meslo-nerd
 obsidian
 claude-code
 nvm
+spotify
+chrome
+pyenv
+ulauncher
