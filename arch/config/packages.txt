@@ -8,11 +8,14 @@ lsd
 vim
 xclip
 fzf
+jq
 ttf-meslo-nerd
 obsidian
 claude-code
 nvm
 spotify
-chrome
+google-chrome
 pyenv
 ulauncher
+kitty
+webstorm

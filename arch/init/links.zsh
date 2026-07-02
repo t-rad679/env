@@ -22,6 +22,13 @@ if [[ -e "$HOME/.config/i3/config" && ! -L "$HOME/.config/i3/config" ]]; then
 fi
 ln -sf "$ENV_DIR/arch/i3/config" "$HOME/.config/i3/config"
 
+# kitty terminal config (font, etc). Same backup-if-real-file handling as i3.
+mkdir -p "$HOME/.config/kitty"
+if [[ -e "$HOME/.config/kitty/kitty.conf" && ! -L "$HOME/.config/kitty/kitty.conf" ]]; then
+    mv "$HOME/.config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf.bak"
+fi
+ln -sf "$ENV_DIR/arch/config/kitty.conf" "$HOME/.config/kitty/kitty.conf"
+
 # Make zsh the login shell (idempotent; prompts for password). Without this you
 # stay in bash on login and the zshrc -- antidote, aliases, etc. -- never loads.
 zsh_path="$(command -v zsh)"
