@@ -2,6 +2,7 @@
   "env": {
     "MEM0_API_KEY": "m0-yObAbc8G40Qd1xgTUWd5jM5IQ38yqcgcCG4SIWJ7"
   },
+  "model": "opus[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -130,8 +131,13 @@
     }
   },
   "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
   "skipWorkflowUsageWarning": true,
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "model": "sonnet"
+  "voiceEnabled": true
 }
