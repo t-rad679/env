@@ -16,6 +16,8 @@ source "$ENV_DIR/arch/init/links.zsh"            # symlink ~/.zshrc and env scri
 source "$ENV_DIR/arch/init/claude.zsh"           # symlink Claude config and user skills
 source "$ENV_DIR/arch/init/install/lightdm.zsh"  # LightDM drop-in (greeter resolution)
 source "$ENV_DIR/arch/init/git.zsh"              # wire git helper scripts into git
+# Sets up the Spotify MCP server. Still requires setup in Claude, due to OS differences.
+source "$ENV_DIR/arch/init/spotify-mcp.zsh"
 # Gaming last: big, optional, AUR-heavy -- keep it after the essential setup so a
 # flaky package never blocks dotfiles/git wiring.
 source "$ENV_DIR/arch/init/gaming.zsh"           # gaming / nvidia packages (needs yay)

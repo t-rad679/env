@@ -15,3 +15,7 @@ if ! git config --global --get-all include.path 2>/dev/null \
         | grep -qxF "$ENV_DIR/git/gitconfig"; then
     git config --global --add include.path "$ENV_DIR/git/gitconfig"
 fi
+
+# GitHub CLI
+
+gh auth login
