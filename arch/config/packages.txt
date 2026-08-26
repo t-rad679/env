@@ -19,3 +19,8 @@ pyenv
 ulauncher
 kitty
 webstorm
+zip
+playerctl
+feh
+xprintidle
+imagemagick

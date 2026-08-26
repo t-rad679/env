@@ -2,6 +2,11 @@
   "env": {
     "MEM0_API_KEY": "m0-yObAbc8G40Qd1xgTUWd5jM5IQ38yqcgcCG4SIWJ7"
   },
+  "model": "opus[1m]",
+  "statusLine": {
+    "type": "command",
+    "command": "bash $HOME/src/env/claude/statusline-command.sh"
+  },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -15,7 +20,8 @@
     "notion@claude-plugins-official": true,
     "mem0@mem0-plugins": true,
     "superpowers@claude-plugins-official": true,
-    "tinkertask@tinkertask-local": true
+    "tinkertask@tinkertask-local": true,
+    "warp@claude-code-warp": true
   },
   "extraKnownMarketplaces": {
     "mem0-plugins": {
@@ -29,15 +35,17 @@
         "source": "directory",
         "path": "/Users/tradical/src/tinkertask-skills"
       }
+    },
+    "claude-code-warp": {
+      "source": {
+        "source": "github",
+        "repo": "warpdotdev/claude-code-warp"
+      }
     }
   },
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "model": "sonnet",
-  "statusLine": {
-    "type": "command",
-    "command": "bash $HOME/src/env/claude/statusline-command.sh"
-  }
+  "skipAutoPermissionPrompt": true
 }
