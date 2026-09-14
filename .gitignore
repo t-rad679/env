@@ -1,0 +1,9 @@
+# Real Claude config with the per-machine Obsidian Local REST API key. init
+# copies claude/config.sample.json to ~/.claude/config.json; the key is pasted
+# in there and must never land in the repo.
+claude/config.json
+
+# Real Spotify MCP config (client secret + OAuth tokens). init copies
+# config/spotify-mcp/spotify-config.sample.json to ~/src/spotify-mcp-server/
+# and the server writes tokens there; nothing with credentials belongs here.
+config/spotify-mcp/spotify-config.json

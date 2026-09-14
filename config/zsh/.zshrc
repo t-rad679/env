@@ -1,0 +1,56 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+autoload -U +X compinit && compinit
+
+# --- machine role ---
+# MACHINE_ROLE (desktop|laptop) comes from ~/.config/machine-role.env, which
+# init links to machines/<role>/machine-role.env in the env repo. Read it before
+# the env scripts so any of them can branch on it regardless of filename order.
+if [[ -r ~/.config/machine-role.env ]]; then
+  set -a
+  source ~/.config/machine-role.env
+  set +a
+fi
+
+# --- antidote (zsh plugin manager) ---
+# Source antidote from wherever it lives on this machine and load the plugins
+# listed in ~/.zsh_plugins.txt. init/antidote.zsh git-clones it to ~/.antidote;
+# the /usr/share paths cover a distro package (note: the AUR package literally
+# named `antidote` is unrelated software).
+_antidote_candidates=(
+  "$HOME/.antidote/antidote.zsh"
+  /usr/share/zsh-antidote/antidote.zsh
+  /usr/share/zsh/plugins/antidote/antidote.zsh
+)
+
+_antidote_found=0
+for _f in $_antidote_candidates; do
+  if [[ -r $_f ]]; then
+    source $_f
+    antidote load          # reads ~/.zsh_plugins.txt
+    _antidote_found=1
+    break
+  fi
+done
+(( _antidote_found )) || print -u2 "antidote not found -- run: git clone --depth=1 https://github.com/mattmc3/antidote.git ~/.antidote"
+unset _f _antidote_found _antidote_candidates
+
+# Load custom scripts. antidote has no $ZSH_CUSTOM auto-loader, so source every
+# *.zsh directly, in alphabetical order.
+export ZSH_CUSTOM=~/env
+
+for script in $ZSH_CUSTOM/*.zsh(N); do
+    source $script
+done
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"

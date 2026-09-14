@@ -2,14 +2,14 @@
   "env": {
     "MEM0_API_KEY": "m0-yObAbc8G40Qd1xgTUWd5jM5IQ38yqcgcCG4SIWJ7"
   },
-  "model": "opus[1m]",
+  "model": "claude-fable-5-1[1m]",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"/Users/tradical/.nvm/versions/node/v22.8.0/bin/node\" \"/Users/tradical/.claude/hooks/gsd-check-update.js\""
+            "command": "node $HOME/.claude/hooks/gsd-check-update.js"
           }
         ]
       },
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /Users/tradical/.claude/hooks/gsd-session-state.sh"
+            "command": "bash $HOME/.claude/hooks/gsd-session-state.sh"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/Users/tradical/.nvm/versions/node/v22.8.0/bin/node\" \"/Users/tradical/.claude/hooks/gsd-context-monitor.js\"",
+            "command": "node $HOME/.claude/hooks/gsd-context-monitor.js",
             "timeout": 10
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /Users/tradical/.claude/hooks/gsd-phase-boundary.sh",
+            "command": "bash $HOME/.claude/hooks/gsd-phase-boundary.sh",
             "timeout": 5
           }
         ]
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/Users/tradical/.nvm/versions/node/v22.8.0/bin/node\" \"/Users/tradical/.claude/hooks/gsd-read-injection-scanner.js\"",
+            "command": "node $HOME/.claude/hooks/gsd-read-injection-scanner.js",
             "timeout": 5
           }
         ]
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/Users/tradical/.nvm/versions/node/v22.8.0/bin/node\" \"/Users/tradical/.claude/hooks/gsd-prompt-guard.js\"",
+            "command": "node $HOME/.claude/hooks/gsd-prompt-guard.js",
             "timeout": 5
           }
         ]
@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/Users/tradical/.nvm/versions/node/v22.8.0/bin/node\" \"/Users/tradical/.claude/hooks/gsd-read-guard.js\"",
+            "command": "node $HOME/.claude/hooks/gsd-read-guard.js",
             "timeout": 5
           }
         ]
@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/Users/tradical/.nvm/versions/node/v22.8.0/bin/node\" \"/Users/tradical/.claude/hooks/gsd-workflow-guard.js\"",
+            "command": "node $HOME/.claude/hooks/gsd-workflow-guard.js",
             "timeout": 5
           }
         ]
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /Users/tradical/.claude/hooks/gsd-validate-commit.sh",
+            "command": "bash $HOME/.claude/hooks/gsd-validate-commit.sh",
             "timeout": 5
           }
         ]
@@ -128,7 +128,7 @@
     "tinkertask-local": {
       "source": {
         "source": "directory",
-        "path": "/Users/tradical/src/tinkertask-skills"
+        "path": "~/src/tinkertask-skills"
       }
     },
     "claude-code-warp": {
@@ -140,7 +140,7 @@
     "ping-pong-local": {
       "source": {
         "source": "directory",
-        "path": "/Users/tradical/src/ping-pong-skills"
+        "path": "~/src/ping-pong-skills"
       }
     }
   },

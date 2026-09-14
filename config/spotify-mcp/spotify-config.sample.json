@@ -1,0 +1,5 @@
+{
+  "clientId": "PASTE-SPOTIFY-CLIENT-ID-HERE",
+  "clientSecret": "PASTE-SPOTIFY-CLIENT-SECRET-HERE",
+  "redirectUri": "http://127.0.0.1:8888/callback"
+}

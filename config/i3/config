@@ -1,0 +1,17 @@
+# i3 config file (v4)
+#
+# Please see https://i3wm.org/docs/userguide.html for a complete reference!
+#
+# Shared config lives in conf.d/: baseconfig.conf (appearance, bindings,
+# workspaces) and autostart.conf (startup programs + the workspace assignments
+# that route them). Each conf.d file is self-contained, so include order
+# doesn't matter.
+#
+# Machine-specific config comes from machines/<role>/i3/*.conf in the env repo.
+# i3 expands include paths with wordexp(3), so $MACHINE_ROLE (exported by
+# ~/.xprofile from ~/.config/machine-role.env) picks the directory. A pattern
+# that matches nothing is skipped without error, but every role directory
+# still ships at least one .conf so the include always resolves.
+
+include conf.d/*.conf
+include $HOME/src/env/machines/$MACHINE_ROLE/i3/*.conf

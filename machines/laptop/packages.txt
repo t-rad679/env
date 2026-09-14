@@ -1,0 +1,3 @@
+# Laptop-only packages. Installed by init/pacman.zsh together with the shared
+# list in config/packages.txt (same format: one per line, # for comments, repo
+# or AUR). Nothing yet.

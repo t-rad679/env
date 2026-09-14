@@ -1,14 +1,12 @@
 [user]
 	name = t-rad679
 	email = trevor.radcliffe@gmail.com
-[credential]
-	helper = 
-	helper = /usr/local/share/gcm-core/git-credential-manager
+# GitHub is reached over ssh (key set up by `gh auth login` in init/gh-login.zsh).
 [credential "https://dev.azure.com"]
 	useHttpPath = true
 # Git aliases that expose the helper scripts in this directory as native git
 # subcommands. Wired into the global config via `git config --global
-# include.path` (see arch/init/git.zsh).
+# include.path` (see init/git.zsh).
 #
 #   git update [default-branch]   -> git-update.sh
 #   git cleanup                   -> git-cleanup.sh

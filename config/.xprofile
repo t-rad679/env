@@ -1,0 +1,15 @@
+#!/bin/sh
+# ~/.xprofile -- LightDM sources this with sh before the window manager
+# starts, so anything exported here is inherited by i3 and every program it
+# launches. POSIX sh on purpose (not zsh): LightDM does not run it under zsh.
+#
+# Managed by the env repo (config/.xprofile), linked by init/links.zsh.
+
+# Machine role (desktop|laptop). ~/.config/machine-role.env is a plain
+# KEY=VALUE file linked by init/role.zsh from machines/<role>/machine-role.env.
+# i3 reads $MACHINE_ROLE in its include path (config/i3/config).
+if [ -r "$HOME/.config/machine-role.env" ]; then
+    set -a
+    . "$HOME/.config/machine-role.env"
+    set +a
+fi

@@ -4,49 +4,71 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-Personal environment/dotfiles for the user (`tradical`). It is cloned to `~/src/env` and its scripts assume that location (e.g. `arch/init/install/pacman.zsh` symlinks `$HOME/src/env/arch/config/pacman.conf`). There is no build, test, or lint step — changes are validated by sourcing the scripts in a real shell.
+Personal environment/dotfiles for two Arch Linux + i3 machines, a **desktop** and a **laptop**. It is cloned to `~/src/env` on both and its scripts assume that location (`ENV_DIR` defaults to `$HOME/src/env`; `git/gitconfig` and `config/i3/config` spell the path out). The two machines have different usernames, so nothing here may assume a username: use `$HOME`/`~`. There is no build, test, or lint step — changes are validated with `zsh -n` and by running the init against a throwaway `HOME`.
+
+## Layout
+
+- **`init/`** — provisioning. `init.sh` is the bash bootstrap (bash because a fresh box has no zsh yet); everything else is zsh step scripts (see below).
+- **`config/`** — files that land in the home directory, laid out by where they go: `zsh/` (`.zshrc`, `.zsh_plugins.txt`, `env/*.zsh` → `~/.zshrc`, `~/.zsh_plugins.txt`, `~/env`), `i3/` (→ `~/.config/i3`), `kitty/kitty.conf`, `.xprofile`, `pacman.conf` (→ `/etc/pacman.conf`), `packages.txt` (shared package list), `spotify-mcp/spotify-config.sample.json`.
+- **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `bin/` with the headless Obsidian / Claude remote-control helpers).
+- **`bin/`** — scripts for both machines; `~/bin` is a symlink to it and is on `PATH`.
+- **`git/`** — git helper scripts + the gitconfig include that exposes them.
+- **`claude/`** — user-level Claude Code config: `CLAUDE.md`, `settings.json`, `config.sample.json`, `user-skills/*`.
+
+Secrets never live in the repo: `claude/config.json` (Obsidian key) and the Spotify config (client secret + OAuth tokens) are gitignored, and init copies the committed `*.sample.json` into place once for you to fill in.
+- **`ide/`** — exported JetBrains configs (binary zips, not editable source).
+
+## Machine roles
+
+`MACHINE_ROLE` is `desktop` or `laptop`. `init/init.sh` defaults to laptop; `--desktop` (or `--desktopMode`) selects desktop. The role is published three ways from one file, `machines/<role>/machine-role.env` (plain `KEY=VALUE`), which `init/role.zsh` links to `~/.config/machine-role.env`:
+
+- **zsh** — `config/zsh/.zshrc` sources it (with `set -a`) *before* the `~/env/*.zsh` loop, so env scripts can branch on it regardless of filename order.
+- **X session** — `config/.xprofile` (POSIX sh, because LightDM runs it with `sh`; this is the one deliberate exception to the zsh-only rule) exports it, so i3 and everything it launches inherit it.
+- **i3** — `config/i3/config` does `include $HOME/src/env/machines/$MACHINE_ROLE/i3/*.conf`. i3 expands include paths with `wordexp(3)` (env vars, `~`, globs) and silently skips a pattern that matches nothing, so each role dir ships at least one `.conf`.
+
+Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset s off -dpms`, the Spotify screensaver, Steam + its assign rule, the gamescope rule, and the headless Obsidian / Claude remote-control helpers. The laptop role is an empty, ready slot (comment-only files).
 
 ## The zsh setup
 
-There is a single, cross-platform shell config under `zsh/`, used on both Arch and macOS. oh-my-zsh has been retired — the framework is gone; only some of its *plugins* are still pulled in (via antidote).
+- **`config/zsh/.zshrc`** — the one rc, symlinked to `~/.zshrc`. Reads the role file, then uses [antidote](https://getantidote.github.io/) for plugins (looked for in `~/.antidote`, where `init/antidote.zsh` clones it, then `/usr/share/...` fallbacks) and powerlevel10k for the prompt. Note: the AUR package literally named `antidote` is *unrelated* software (Druide's writing tool), which is why antidote is installed via git clone, not yay.
+- **`config/zsh/.zsh_plugins.txt`** — the antidote plugin list (→ `~/.zsh_plugins.txt`). The `ohmyzsh/ohmyzsh path:...` entries are oh-my-zsh plugins loaded *through* antidote; the oh-my-zsh framework itself is gone.
+- **`config/zsh/env/*.zsh`** — custom env scripts, sourced from `~/env` (a symlink to the directory) in **alphabetical order**. They have no load-order dependencies; if you add some, prefix filenames (`00-`, `10-`). `globalvars.zsh` exports `EDITOR` and `GRIMOIRE_DIR` (`~/docs/obsidian_vaults/grimoire`, the same on both machines); `path.zsh` adds `~/bin` and `machines/$MACHINE_ROLE/bin` to `PATH`.
 
-- **`zsh/.zshrc`** — the one rc, symlinked to `~/.zshrc`. Uses [antidote](https://getantidote.github.io/) for plugin management and powerlevel10k for the prompt. It locates `antidote.zsh` across machines (Homebrew on macOS; `~/.antidote` git clone on Arch — see below; plus `/usr/share/...` fallbacks if installed via a package), then `antidote load` reads `~/.zsh_plugins.txt`. Note: the AUR package literally named `antidote` is *unrelated* software (Druide's writing tool), which is why Arch installs antidote via git clone, not yay.
-- **`zsh/.zsh_plugins.txt`** — the antidote plugin list (symlinked to `~/.zsh_plugins.txt`). Includes some `ohmyzsh/ohmyzsh path:...` entries — those are oh-my-zsh plugins loaded *through* antidote, not the oh-my-zsh framework.
-- **`zsh/env/*.zsh`** — custom env scripts (see next section).
+## Provisioning flow
 
-## Env-script load order
+`init/init.sh [--desktop] [--links-only]` installs zsh and execs `init/init.zsh` with `MACHINE_ROLE` set. `init.zsh` sources each step **in its own subshell** by absolute path off `ENV_DIR`, so a failing step (or a stray `exit`) is reported and init continues; it prints a summary of failed steps at the end. Every step is safe to re-run. Order:
 
-`zsh/.zshrc` sets `ZSH_CUSTOM=~/env` and sources every `~/env/*.zsh` in **alphabetical order** (`alias`, `highlight`, `path`, `startup`). On Arch, `links.zsh` symlinks the whole `zsh/env/` directory to `~/env`. There is no `env_setup.zsh` chainloader.
+1. `fs.zsh` — `~/src`, `~/.config`, `~/docs/obsidian_vaults` (never the vault itself)
+2. `role.zsh` — link `~/.config/machine-role.env`
+3. `pacman.zsh` — link `pacman.conf`, install git, bootstrap yay (`yay.zsh`), `yay -Syu`, install `config/packages.txt` + `machines/<role>/packages.txt`
+4. `gh-login.zsh` — `gh auth status`; only when logged out, `gh auth login --git-protocol ssh --web` (device code, works from a text console; offers to generate and upload an ssh key), then init continues on its own
+5. `antidote.zsh`, `node.zsh` — antidote clone; latest node via the `nvm` package
+6. `links.zsh` — `~/bin`, zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.xprofile`
+7. `claude.zsh` — link `CLAUDE.md`, `settings.json` and every `claude/user-skills/*` dir; copy `config.sample.json` → `~/.claude/config.json` only if missing (never overwritten; prints a reminder to paste the Obsidian key); rewrite the directory-source marketplace paths in `settings.json` to `$HOME/src/<name>` (idempotent)
+8. `marketplaces.zsh` — `gh repo clone` the local plugin marketplaces into `~/src` (skip if present)
+9. `git.zsh` — add `git/gitconfig` to the global `include.path` once
+10. `shell.zsh` — `chsh` to zsh if needed
+11. `spotify-mcp.zsh` — clone/build `spotify-mcp-server`, copy `spotify-config.sample.json` into it once (real file, never a link), `npm run auth` only when the client id/secret are filled in and no `refreshToken` is stored
+12. `machines/<role>/init.zsh` — role hook (desktop: LightDM drop-in via `sudo`)
 
-The four current scripts have no load-order dependencies. If you add scripts that do, prefix filenames (`00-`, `10-`) since alphabetical order is the contract. When changing env behavior, edit `zsh/env/`.
+`--links-only` runs only steps 1, 2, 6, 7, 9 and 12: no packages, network, or `chsh`. Steps 3, 4, 8, 11 need sudo/network and are the ones to stub when testing.
 
-## Arch provisioning flow
+### Linking rules (`init/lib.zsh`)
 
-`arch/init.sh` is the bootstrap entry point (installs zsh, then sources `init/init.zsh` relative to its own location). `arch/init/init.zsh` sets `ENV_DIR=$HOME/src/env` and sources each step by absolute path (so steps don't depend on cwd), in order:
-1. `fs.zsh` — create `~/src`, `~/bin`
-2. `install/pacman.zsh` — swap in this repo's `pacman.conf`, install git, bootstrap yay (`install/yay.zsh`), `yay -Syu`, then install everything in `arch/config/packages.txt`
-3. `install/antidote.zsh` — install the antidote zsh plugin manager (git clone to `~/.antidote`; idempotent)
-4. `links.zsh` — symlink `zsh/.zshrc` → `~/.zshrc`, `zsh/.zsh_plugins.txt` → `~/.zsh_plugins.txt`, and `zsh/env/` → `~/env`; also `chsh` to zsh (login shell). Note: `antidote` is a zsh *function* loaded by the zshrc, not a binary — it only exists inside an interactive zsh once `~/.antidote` is cloned.
-5. `install/lightdm.zsh` — symlink `arch/config/lightdm.conf.d/50-resolution.conf` → `/etc/lightdm/lightdm.conf.d/50-resolution.conf` (sets the greeter to 1920x1080 on HDMI-3 via `display-setup-script`; same symlink-into-the-repo pattern as `pacman.conf`)
-6. `git.zsh` — wire git helper scripts into git via `git config --global include.path`
-7. `gaming.zsh` — gaming/nvidia packages via yay (runs last: big, optional, AUR-heavy)
-
-These scripts are destructive/system-level (move `/etc/pacman.conf`, install packages) and are meant to run once on a fresh Arch install. To always install a package, add it to `arch/config/packages.txt` (one per line, `#` for comments; repo or AUR).
+`link_path SRC DEST` (and `sudo_link_path` for `/etc`) is used for every link init makes: no-op if `DEST` already points at `SRC`; a symlink pointing elsewhere is replaced; a real file/dir is moved to `DEST.bak` once (a later run never overwrites an existing backup — it gets a timestamp suffix instead). Symlinks are always replaced, never linked into, so re-running can't create nested links inside a target directory.
 
 ## Git helper scripts
 
-`git/*.sh` are exposed as git subcommands via aliases in `git/gitconfig`, which `arch/init/git.zsh` pulls into the global config with `git config --global include.path`. This gives `git update` / `git cleanup` / `git rename-branch`:
+`git/*.sh` are exposed as git subcommands via aliases in `git/gitconfig`, which `init/git.zsh` pulls into the global config with `git config --global include.path`. This gives `git update` / `git cleanup` / `git rename-branch`:
 - `git-update.sh` — stash, checkout default branch (`master` by default, or `$1`), pull, return to original branch, rebase onto default, re-apply stash.
 - `git-cleanup.sh` — prune remote-tracking refs and delete local branches whose upstream is `: gone]`.
 - `git-rename-branch.sh` — rename a branch locally and recreate it on the remote (`git rename-branch old new`).
 
 `git-update.sh` defaults the trunk to `master`; this repo's own trunk is `main`, so pass it explicitly when running here.
 
-## IDE settings
-
-`ide/keymaps.zip` and `ide/settings.zip` are exported JetBrains/IntelliJ configs (the repo is itself an IntelliJ project — see `.idea/`). They are binary archives, not editable source.
-
 ## Conventions
 
-- Shebangs are inconsistent (`#!/usr/bin/zsh`, `#!/bin/zsh`, `#!/bin/bash`); match the surrounding file rather than normalizing.
+- New shell scripts are zsh (`#!/usr/bin/zsh`). Exceptions: `init/init.sh` (bash bootstrap) and `config/.xprofile` (POSIX sh). Older files with other shebangs are normalized only when touched.
+- `sudo` cannot run from Claude's shell (no TTY); don't run init, package installs, `chsh`, or anything touching `/etc`. Verify with `zsh -n`, `sh -n`/`bash -n`, and by running the link steps against a throwaway `HOME` with `sudo`/`gh` stubbed.
 - `alias.zsh` assumes `lsd`, `vim`, and `xclip` are installed.
+- `claude/settings.json` is written back to by Claude Code (through the `~/.claude/settings.json` symlink), so expect it to show up modified.

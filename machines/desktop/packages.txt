@@ -1,0 +1,17 @@
+# Desktop-only packages: gaming + NVIDIA. Installed by init/pacman.zsh together
+# with the shared list in config/packages.txt (same format: one per line, # for
+# comments, repo or AUR).
+
+steam
+nvidia-utils
+nvidia-settings
+dxvk-bin
+proton-ge-custom
+gamemode
+lib32-gamemode
+winetricks
+protontricks
+lib32-gnutls
+lib32-libldap
+lib32-libgpg-error
+lib32-sqlite
