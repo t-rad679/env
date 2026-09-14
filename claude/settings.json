@@ -115,7 +115,8 @@
     "mem0@mem0-plugins": true,
     "superpowers@claude-plugins-official": true,
     "tinkertask@tinkertask-local": true,
-    "warp@claude-code-warp": true
+    "warp@claude-code-warp": true,
+    "ping-pong@ping-pong-local": true
   },
   "extraKnownMarketplaces": {
     "mem0-plugins": {
@@ -135,6 +136,17 @@
         "source": "github",
         "repo": "warpdotdev/claude-code-warp"
       }
+    },
+    "ping-pong-local": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/tradical/src/ping-pong-skills"
+      }
+    }
+  },
+  "modelSettings": {
+    "claude-fable-5-1": {
+      "effortLevel": "high"
     }
   },
   "tui": "fullscreen",
