@@ -20,7 +20,7 @@ Secrets never live in the repo: `claude/config.json` (Obsidian key) and the Spot
 
 ## Machine roles
 
-`MACHINE_ROLE` is `desktop` or `laptop`. `init/init.sh` defaults to laptop; `--desktop` (or `--desktopMode`) selects desktop. The role is published three ways from one file, `machines/<role>/machine-role.env` (plain `KEY=VALUE`), which `init/role.zsh` links to `~/.config/machine-role.env`:
+`MACHINE_ROLE` is `desktop` or `laptop`. **Desktop is the default everywhere the variable is unset**: `init/init.sh` (`--laptop` selects laptop; `--desktop`/`--desktopMode` are accepted too), `init/init.zsh`, `.zshrc`, `.xprofile`, `path.zsh` and the i3 include all apply `${MACHINE_ROLE:-desktop}`, so a session that never sourced the role file (startx, a display manager that skips `~/.xprofile`) still gets the desktop config rather than silently none. The role is published three ways from one file, `machines/<role>/machine-role.env` (plain `KEY=VALUE`), which `init/role.zsh` links to `~/.config/machine-role.env`:
 
 - **zsh** — `config/zsh/.zshrc` sources it (with `set -a`) *before* the `~/env/*.zsh` loop, so env scripts can branch on it regardless of filename order.
 - **X session** — `config/.xprofile` (POSIX sh, because LightDM runs it with `sh`; this is the one deliberate exception to the zsh-only rule) exports it, so i3 and everything it launches inherit it.
@@ -36,7 +36,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 
 ## Provisioning flow
 
-`init/init.sh [--desktop] [--links-only]` installs zsh and execs `init/init.zsh` with `MACHINE_ROLE` set. `init.zsh` sources each step **in its own subshell** by absolute path off `ENV_DIR`, so a failing step (or a stray `exit`) is reported and init continues; it prints a summary of failed steps at the end. Every step is safe to re-run. Order:
+`init/init.sh [--desktop|--laptop] [--links-only]` installs zsh and execs `init/init.zsh` with `MACHINE_ROLE` set. `init.zsh` sources each step **in its own subshell** by absolute path off `ENV_DIR`, so a failing step (or a stray `exit`) is reported and init continues; it prints a summary of failed steps at the end. Every step is safe to re-run. Order:
 
 1. `fs.zsh` — `~/src`, `~/.config`, `~/docs/obsidian_vaults` (never the vault itself)
 2. `role.zsh` — link `~/.config/machine-role.env`

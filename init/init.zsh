@@ -10,7 +10,7 @@
 # killing the whole init. Steps are all safe to re-run.
 
 export ENV_DIR="${ENV_DIR:-$HOME/src/env}"
-export MACHINE_ROLE="${MACHINE_ROLE:-laptop}"
+export MACHINE_ROLE="${MACHINE_ROLE:-desktop}"
 INIT_LINKS_ONLY="${INIT_LINKS_ONLY:-0}"
 
 case $MACHINE_ROLE in
