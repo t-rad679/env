@@ -10,7 +10,7 @@ Personal environment/dotfiles for two Arch Linux + i3 machines, a **desktop** an
 
 - **`init/`** — provisioning. `init.sh` is the bash bootstrap (bash because a fresh box has no zsh yet); everything else is zsh step scripts (see below).
 - **`config/`** — files that land in the home directory, laid out by where they go: `zsh/` (`.zshrc`, `.zsh_plugins.txt`, `env/*.zsh` → `~/.zshrc`, `~/.zsh_plugins.txt`, `~/env`), `i3/` (→ `~/.config/i3`), `kitty/kitty.conf`, `.xprofile`, `pacman.conf` (→ `/etc/pacman.conf`), `packages.txt` (shared package list), `spotify-mcp/spotify-config.sample.json`.
-- **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `bin/` with the headless Obsidian / Claude remote-control helpers).
+- **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `xprofile.sh` (role-only X-session startup, a POSIX sh fragment sourced by `config/.xprofile`; the desktop one is where the headless Obsidian / Xvfb startup belongs and is a marked placeholder until it is pasted in), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `bin/` with the headless Obsidian / Claude remote-control helpers).
 - **`bin/`** — scripts for both machines; `config/zsh/env/path.zsh` puts it (`~/src/env/bin`) on `PATH`. It is never linked to `~/bin`, which stays the user's own hand-written-scripts directory (also on `PATH` when present).
 - **`git/`** — git helper scripts + the gitconfig include that exposes them.
 - **`claude/`** — user-level Claude Code config: `CLAUDE.md`, `settings.json`, `config.sample.json`, `user-skills/*`.
@@ -23,7 +23,7 @@ Secrets never live in the repo: `claude/config.json` (Obsidian key) and the Spot
 `MACHINE_ROLE` is `desktop` or `laptop`. **Desktop is the default everywhere the variable is unset**: `init/init.sh` (`--laptop` selects laptop; `--desktop`/`--desktopMode` are accepted too), `init/init.zsh`, `.zshrc`, `.xprofile`, `path.zsh` and the i3 include all apply `${MACHINE_ROLE:-desktop}`, so a session that never sourced the role file (startx, a display manager that skips `~/.xprofile`) still gets the desktop config rather than silently none. The role is published three ways from one file, `machines/<role>/machine-role.env` (plain `KEY=VALUE`), which `init/role.zsh` links to `~/.config/machine-role.env`:
 
 - **zsh** — `config/zsh/.zshrc` sources it (with `set -a`) *before* the `~/env/*.zsh` loop, so env scripts can branch on it regardless of filename order.
-- **X session** — `config/.xprofile` (POSIX sh, because LightDM runs it with `sh`; this is the one deliberate exception to the zsh-only rule) exports it, so i3 and everything it launches inherit it.
+- **X session** — `config/.xprofile` (POSIX sh, because LightDM runs it with `sh`; this is the one deliberate exception to the zsh-only rule, shared by the `machines/<role>/xprofile.sh` fragments it sources) exports it, so i3 and everything it launches inherit it, then sources `machines/${MACHINE_ROLE:-desktop}/xprofile.sh` for role-only login setup. `init/links.zsh` warns loudly before backing up a real `~/.xprofile` to `~/.xprofile.bak`: its contents must be moved into the role fragment or they stop running at login.
 - **i3** — `config/i3/config` does `include $HOME/src/env/machines/$MACHINE_ROLE/i3/*.conf`. i3 expands include paths with `wordexp(3)` (env vars, `~`, globs) and silently skips a pattern that matches nothing, so each role dir ships at least one `.conf`.
 
 Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset s off -dpms`, the Spotify screensaver, Steam + its assign rule, the gamescope rule, and the headless Obsidian / Claude remote-control helpers. The laptop role is an empty, ready slot (comment-only files).
@@ -68,7 +68,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 
 ## Conventions
 
-- New shell scripts are zsh (`#!/usr/bin/zsh`). Exceptions: `init/init.sh` (bash bootstrap) and `config/.xprofile` (POSIX sh). Older files with other shebangs are normalized only when touched.
+- New shell scripts are zsh (`#!/usr/bin/zsh`). Exceptions: `init/init.sh` (bash bootstrap), `config/.xprofile` and the `machines/*/xprofile.sh` fragments it sources (POSIX sh). Older files with other shebangs are normalized only when touched.
 - `sudo` cannot run from Claude's shell (no TTY); don't run init, package installs, `chsh`, or anything touching `/etc`. Verify with `zsh -n`, `sh -n`/`bash -n`, and by running the link steps against a throwaway `HOME` with `sudo`/`gh` stubbed.
 - `alias.zsh` assumes `lsd`, `vim`, and `xclip` are installed.
 - `claude/settings.json` is written back to by Claude Code (through the `~/.claude/settings.json` symlink), so expect it to show up modified.

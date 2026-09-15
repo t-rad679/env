@@ -32,7 +32,21 @@ link_path "$ENV_DIR/config/i3" "$HOME/.config/i3" || rc=1
 link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" || rc=1
 
 # ~/.xprofile: sourced by LightDM before i3 starts; exports MACHINE_ROLE into
-# the X session. (POSIX sh, not zsh, because LightDM runs it with sh.)
+# the X session and sources machines/<role>/xprofile.sh. (POSIX sh, not zsh,
+# because LightDM runs it with sh.) A hand-maintained real ~/.xprofile (the
+# desktop's starts headless Obsidian under Xvfb) gets backed up by link_path,
+# which silently disables whatever it did -- so shout about it first.
+if [[ -e $HOME/.xprofile && ! -L $HOME/.xprofile ]]; then
+    print -u2 ""
+    print -u2 "!!  WARNING: $HOME/.xprofile is a real file, not a link."
+    print -u2 "!!  It is being backed up to $HOME/.xprofile.bak and replaced with a link to"
+    print -u2 "!!  $ENV_DIR/config/.xprofile, which only exports MACHINE_ROLE and sources"
+    print -u2 "!!  $ENV_DIR/machines/$MACHINE_ROLE/xprofile.sh."
+    print -u2 "!!  Anything the old file did at login (headless Obsidian / Xvfb for the"
+    print -u2 "!!  Obsidian MCP server, etc.) STOPS HAPPENING until you move its contents"
+    print -u2 "!!  from $HOME/.xprofile.bak into machines/$MACHINE_ROLE/xprofile.sh."
+    print -u2 ""
+fi
 link_path "$ENV_DIR/config/.xprofile" "$HOME/.xprofile" || rc=1
 
 return $rc
