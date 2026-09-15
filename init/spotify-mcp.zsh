@@ -3,13 +3,17 @@
 # Set up marcelmarais/spotify-mcp-server under ~/src (shared by both roles).
 # Registering it in Claude (`claude mcp add ...`) is still a manual step.
 #
-# Re-runnable: skips an existing clone, never touches an existing config, and
-# skips the OAuth dance when a token is already stored. Never exits the parent
-# init.
+# Re-runnable: skips an existing clone, only runs `npm install && npm run
+# build` while the build output (build/index.js, tsc's outDir per upstream
+# tsconfig.json; also the package's bin) is missing -- so a clone whose first
+# build failed gets rebuilt on the next run instead of skipped -- never touches
+# an existing config, never runs `npm run auth` without that build, and skips
+# the OAuth dance when a token is already stored. Never exits the parent init.
 
 ENV_DIR="${ENV_DIR:-$HOME/src/env}"
 
 SPOTIFY_DIR="$HOME/src/spotify-mcp-server"
+BUILD="$SPOTIFY_DIR/build/index.js"
 CONFIG="$SPOTIFY_DIR/spotify-config.json"
 CONFIG_SAMPLE="$ENV_DIR/config/spotify-mcp/spotify-config.sample.json"
 
@@ -20,13 +24,11 @@ if ! command -v npm &> /dev/null; then
     return 1
 fi
 
-fresh_clone=0
 if [[ ! -d $SPOTIFY_DIR ]]; then
     if ! gh repo clone marcelmarais/spotify-mcp-server "$SPOTIFY_DIR"; then
         print -u2 "    clone failed; skipping spotify-mcp"
         return 1
     fi
-    fresh_clone=1
 else
     print "    $SPOTIFY_DIR already present"
 fi
@@ -51,8 +53,21 @@ if [[ ! -e $CONFIG ]]; then
     print "    created $CONFIG from spotify-config.sample.json"
 fi
 
-if (( fresh_clone )); then
-    ( cd "$SPOTIFY_DIR" && npm install && npm run build ) || return 1
+# Build whenever the output is missing: a fresh clone, or an earlier run whose
+# build failed. Upstream `npm run build` is `tsc && chmod build/index.js`, and
+# `npm run auth` (`tsc && node build/auth.js`) needs node_modules from the
+# install, so neither is worth attempting past a failed build.
+if [[ ! -e $BUILD ]]; then
+    if ! ( cd "$SPOTIFY_DIR" && npm install && npm run build ); then
+        print -u2 "    build failed; re-run init (or: cd $SPOTIFY_DIR && npm install && npm run build)"
+        return 1
+    fi
+    if [[ ! -e $BUILD ]]; then
+        print -u2 "    build finished but $BUILD is still missing; skipping npm run auth"
+        return 1
+    fi
+else
+    print "    $BUILD present; skipping npm install/build"
 fi
 
 if grep -q 'PASTE-SPOTIFY-CLIENT' "$CONFIG"; then

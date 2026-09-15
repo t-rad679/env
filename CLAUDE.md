@@ -40,7 +40,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 
 1. `fs.zsh` — `~/src`, `~/.config`, `~/docs/obsidian_vaults` (never the vault itself)
 2. `role.zsh` — link `~/.config/machine-role.env`
-3. `pacman.zsh` — link `pacman.conf`, install git, bootstrap yay (`yay.zsh`), `yay -Syu`, install `config/packages.txt` + `machines/<role>/packages.txt`
+3. `pacman.zsh` — link `pacman.conf`, install git, bootstrap yay (`yay.zsh`), `yay -Syu`, install `config/packages.txt` + `machines/<role>/packages.txt`. Interactive on purpose (no `--noconfirm`): the desktop gaming packages raise provider prompts (`lib32-vulkan-driver`) where the default pick is AMD, not NVIDIA
 4. `gh-login.zsh` — `gh auth status`; only when logged out, `gh auth login --git-protocol ssh --web` (device code, works from a text console; offers to generate and upload an ssh key), then init continues on its own
 5. `antidote.zsh`, `node.zsh` — antidote clone; latest node via the `nvm` package
 6. `links.zsh` — `~/bin`, zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.xprofile`
@@ -48,14 +48,14 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 8. `marketplaces.zsh` — `gh repo clone` the local plugin marketplaces into `~/src` (skip if present)
 9. `git.zsh` — add `git/gitconfig` to the global `include.path` once
 10. `shell.zsh` — `chsh` to zsh if needed
-11. `spotify-mcp.zsh` — clone/build `spotify-mcp-server`, copy `spotify-config.sample.json` into it once (real file, never a link), `npm run auth` only when the client id/secret are filled in and no `refreshToken` is stored
+11. `spotify-mcp.zsh` — clone `spotify-mcp-server`; `npm install && npm run build` whenever `build/index.js` is missing (so a failed first build is retried on the next run); copy `spotify-config.sample.json` into it once (real file, never a link); `npm run auth` only once the build exists, the client id/secret are filled in and no `refreshToken` is stored
 12. `machines/<role>/init.zsh` — role hook (desktop: LightDM drop-in via `sudo`)
 
 `--links-only` runs only steps 1, 2, 6, 7, 9 and 12: no packages, network, or `chsh`. Steps 3, 4, 8, 11 need sudo/network and are the ones to stub when testing.
 
 ### Linking rules (`init/lib.zsh`)
 
-`link_path SRC DEST` (and `sudo_link_path` for `/etc`) is used for every link init makes: no-op if `DEST` already points at `SRC`; a symlink pointing elsewhere is replaced; a real file/dir is moved to `DEST.bak` once (a later run never overwrites an existing backup — it gets a timestamp suffix instead). Symlinks are always replaced, never linked into, so re-running can't create nested links inside a target directory.
+`link_path SRC DEST` (and `sudo_link_path` for `/etc`) is used for every link init makes: no-op if `DEST` already points at `SRC`; a symlink pointing elsewhere is replaced; a real file/dir is moved to `DEST.bak` once (a later run never overwrites an existing backup — it gets a timestamp suffix instead). Symlinks are always replaced, never linked into, so re-running can't create nested links inside a target directory. Every mutation (`mv`, `rm`, `mkdir`, `ln`) is checked: on failure the helper prints `FAILED to link ...` on stderr and returns non-zero, so the step fails and shows up in init's summary instead of printing a `linked` line that never happened.
 
 ## Git helper scripts
 
