@@ -48,7 +48,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 8. `marketplaces.zsh` — `gh repo clone` the local plugin marketplaces into `~/src` (skip if present)
 9. `git.zsh` — add `git/gitconfig` to the global `include.path` once
 10. `shell.zsh` — `chsh` to zsh if needed
-11. `spotify-mcp.zsh` — clone/build `spotify-mcp-server`, copy `spotify-config.sample.json` into it once (real file, never a link), `npm run auth` only when the client id/secret are filled in and no `refreshToken` is stored
+11. `spotify-mcp.zsh` — clone `spotify-mcp-server`; `npm install && npm run build` whenever `build/index.js` is missing (so a failed first build is retried on the next run); copy `spotify-config.sample.json` into it once (real file, never a link); `npm run auth` only once the build exists, the client id/secret are filled in and no `refreshToken` is stored
 12. `machines/<role>/init.zsh` — role hook (desktop: LightDM drop-in via `sudo`)
 
 `--links-only` runs only steps 1, 2, 6, 7, 9 and 12: no packages, network, or `chsh`. Steps 3, 4, 8, 11 need sudo/network and are the ones to stub when testing.
