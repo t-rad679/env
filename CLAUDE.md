@@ -11,7 +11,7 @@ Personal environment/dotfiles for two Arch Linux + i3 machines, a **desktop** an
 - **`init/`** — provisioning. `init.sh` is the bash bootstrap (bash because a fresh box has no zsh yet); everything else is zsh step scripts (see below).
 - **`config/`** — files that land in the home directory, laid out by where they go: `zsh/` (`.zshrc`, `.zsh_plugins.txt`, `env/*.zsh` → `~/.zshrc`, `~/.zsh_plugins.txt`, `~/env`), `i3/` (→ `~/.config/i3`), `kitty/kitty.conf`, `.xprofile`, `pacman.conf` (→ `/etc/pacman.conf`), `packages.txt` (shared package list), `spotify-mcp/spotify-config.sample.json`.
 - **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `bin/` with the headless Obsidian / Claude remote-control helpers).
-- **`bin/`** — scripts for both machines; `~/bin` is a symlink to it and is on `PATH`.
+- **`bin/`** — scripts for both machines; `config/zsh/env/path.zsh` puts it (`~/src/env/bin`) on `PATH`. It is never linked to `~/bin`, which stays the user's own hand-written-scripts directory (also on `PATH` when present).
 - **`git/`** — git helper scripts + the gitconfig include that exposes them.
 - **`claude/`** — user-level Claude Code config: `CLAUDE.md`, `settings.json`, `config.sample.json`, `user-skills/*`.
 
@@ -32,7 +32,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 
 - **`config/zsh/.zshrc`** — the one rc, symlinked to `~/.zshrc`. Reads the role file, then uses [antidote](https://getantidote.github.io/) for plugins (looked for in `~/.antidote`, where `init/antidote.zsh` clones it, then `/usr/share/...` fallbacks) and powerlevel10k for the prompt. Note: the AUR package literally named `antidote` is *unrelated* software (Druide's writing tool), which is why antidote is installed via git clone, not yay.
 - **`config/zsh/.zsh_plugins.txt`** — the antidote plugin list (→ `~/.zsh_plugins.txt`). The `ohmyzsh/ohmyzsh path:...` entries are oh-my-zsh plugins loaded *through* antidote; the oh-my-zsh framework itself is gone.
-- **`config/zsh/env/*.zsh`** — custom env scripts, sourced from `~/env` (a symlink to the directory) in **alphabetical order**. They have no load-order dependencies; if you add some, prefix filenames (`00-`, `10-`). `globalvars.zsh` exports `EDITOR` and `GRIMOIRE_DIR` (`~/docs/obsidian_vaults/grimoire`, the same on both machines); `path.zsh` adds `~/bin` and `machines/$MACHINE_ROLE/bin` to `PATH`.
+- **`config/zsh/env/*.zsh`** — custom env scripts, sourced from `~/env` (a symlink to the directory) in **alphabetical order**. They have no load-order dependencies; if you add some, prefix filenames (`00-`, `10-`). `globalvars.zsh` exports `EDITOR` and `GRIMOIRE_DIR` (`~/docs/obsidian_vaults/grimoire`, the same on both machines); `path.zsh` adds `~/bin` (the user's own, unmanaged), `~/src/env/bin` and `machines/$MACHINE_ROLE/bin` to `PATH`.
 
 ## Provisioning flow
 
@@ -43,7 +43,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 3. `pacman.zsh` — link `pacman.conf`, install git, bootstrap yay (`yay.zsh`), `yay -Syu`, install `config/packages.txt` + `machines/<role>/packages.txt`
 4. `gh-login.zsh` — `gh auth status`; only when logged out, `gh auth login --git-protocol ssh --web` (device code, works from a text console; offers to generate and upload an ssh key), then init continues on its own
 5. `antidote.zsh`, `node.zsh` — antidote clone; latest node via the `nvm` package
-6. `links.zsh` — `~/bin`, zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.xprofile`
+6. `links.zsh` — zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.xprofile` (never `~/bin`); returns non-zero if any link failed
 7. `claude.zsh` — link `CLAUDE.md`, `settings.json` and every `claude/user-skills/*` dir; copy `config.sample.json` → `~/.claude/config.json` only if missing (never overwritten; prints a reminder to paste the Obsidian key); rewrite the directory-source marketplace paths in `settings.json` to `$HOME/src/<name>` (idempotent)
 8. `marketplaces.zsh` — `gh repo clone` the local plugin marketplaces into `~/src` (skip if present)
 9. `git.zsh` — add `git/gitconfig` to the global `include.path` once

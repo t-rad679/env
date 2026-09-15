@@ -1,8 +1,8 @@
 #!/usr/bin/zsh
 
 # Create the base directories the rest of init (and the shell config) expect.
-# ~/bin is deliberately NOT created here: it becomes a symlink to the repo's
-# bin/ in links.zsh.
+# ~/bin is deliberately NOT created here: it is the user's own directory (init
+# never links it; config/zsh/env/path.zsh just adds it to PATH if it exists).
 
 mkdir -p "$HOME/src" "$HOME/.config"
 
