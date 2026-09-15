@@ -40,7 +40,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 
 1. `fs.zsh` — `~/src`, `~/.config`, `~/docs/obsidian_vaults` (never the vault itself)
 2. `role.zsh` — link `~/.config/machine-role.env`
-3. `pacman.zsh` — link `pacman.conf`, install git, bootstrap yay (`yay.zsh`), `yay -Syu`, install `config/packages.txt` + `machines/<role>/packages.txt`
+3. `pacman.zsh` — link `pacman.conf`, install git, bootstrap yay (`yay.zsh`), `yay -Syu`, install `config/packages.txt` + `machines/<role>/packages.txt`. Interactive on purpose (no `--noconfirm`): the desktop gaming packages raise provider prompts (`lib32-vulkan-driver`) where the default pick is AMD, not NVIDIA
 4. `gh-login.zsh` — `gh auth status`; only when logged out, `gh auth login --git-protocol ssh --web` (device code, works from a text console; offers to generate and upload an ssh key), then init continues on its own
 5. `antidote.zsh`, `node.zsh` — antidote clone; latest node via the `nvm` package
 6. `links.zsh` — `~/bin`, zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.xprofile`
