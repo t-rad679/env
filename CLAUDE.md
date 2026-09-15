@@ -11,7 +11,7 @@ Personal environment/dotfiles for two Arch Linux + i3 machines, a **desktop** an
 - **`init/`** — provisioning. `init.sh` is the bash bootstrap (bash because a fresh box has no zsh yet); everything else is zsh step scripts (see below).
 - **`config/`** — files that land in the home directory, laid out by where they go: `zsh/` (`.zshrc`, `.zsh_plugins.txt`, `env/*.zsh` → `~/.zshrc`, `~/.zsh_plugins.txt`, `~/env`), `i3/` (→ `~/.config/i3`), `kitty/kitty.conf`, `.xprofile`, `pacman.conf` (→ `/etc/pacman.conf`), `packages.txt` (shared package list), `spotify-mcp/spotify-config.sample.json`.
 - **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `bin/` with the headless Obsidian / Claude remote-control helpers).
-- **`bin/`** — scripts for both machines; `~/bin` is a symlink to it and is on `PATH`.
+- **`bin/`** — scripts for both machines; `~/bin` is a symlink to it and is on `PATH`. `claude-hook-node` is the launcher for the `node` hooks in `claude/settings.json` (`zsh $HOME/src/env/bin/claude-hook-node <hook.js>`): it loads node from nvm when Claude Code was started without an interactive zsh (ulauncher, a .desktop entry, a systemd user unit), where PATH has no node.
 - **`git/`** — git helper scripts + the gitconfig include that exposes them.
 - **`claude/`** — user-level Claude Code config: `CLAUDE.md`, `settings.json`, `config.sample.json`, `user-skills/*`.
 
@@ -44,7 +44,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 4. `gh-login.zsh` — `gh auth status`; only when logged out, `gh auth login --git-protocol ssh --web` (device code, works from a text console; offers to generate and upload an ssh key), then init continues on its own
 5. `antidote.zsh`, `node.zsh` — antidote clone; latest node via the `nvm` package
 6. `links.zsh` — `~/bin`, zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.xprofile`
-7. `claude.zsh` — link `CLAUDE.md`, `settings.json` and every `claude/user-skills/*` dir; copy `config.sample.json` → `~/.claude/config.json` only if missing (never overwritten; prints a reminder to paste the Obsidian key); rewrite the directory-source marketplace paths in `settings.json` to `$HOME/src/<name>` (idempotent)
+7. `claude.zsh` — link `CLAUDE.md`, `settings.json` and every `claude/user-skills/*` dir; copy `config.sample.json` → `~/.claude/config.json` only if missing (never overwritten; prints a reminder to paste the Obsidian key). The local plugin marketplaces stay as the committed `~/src/<name>` directory sources in `settings.json`: Claude Code expands `~` itself when it registers them in `~/.claude/plugins/known_marketplaces.json`, so init never rewrites the tracked file (it used to, with a username-specific absolute path)
 8. `marketplaces.zsh` — `gh repo clone` the local plugin marketplaces into `~/src` (skip if present)
 9. `git.zsh` — add `git/gitconfig` to the global `include.path` once
 10. `shell.zsh` — `chsh` to zsh if needed

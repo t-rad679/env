@@ -1,0 +1,42 @@
+#!/usr/bin/zsh
+
+# Run node for the Claude Code hooks in claude/settings.json.
+#
+# node comes from nvm on both machines (Arch: the nvm package; macOS:
+# ~/.nvm), which only puts it on PATH once an interactive zsh has sourced
+# nvm. Claude Code started from ulauncher, a .desktop entry or a systemd
+# user unit inherits a PATH without node, and every `node ...` hook then
+# dies with "command not found". This wrapper finds node the same way the
+# shell does, then execs it with the hook's arguments.
+#
+# Usage (settings.json): zsh $HOME/src/env/bin/claude-hook-node <script.js> ...
+
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+# 1. Already on PATH (interactive shell, or a distro node package).
+if ! command -v node &> /dev/null; then
+    # 2. Load nvm: Arch package first, then a user-level ~/.nvm install.
+    if [[ -r /usr/share/nvm/init-nvm.sh ]]; then
+        source /usr/share/nvm/init-nvm.sh
+    elif [[ -r $NVM_DIR/nvm.sh ]]; then
+        source "$NVM_DIR/nvm.sh"
+    fi
+fi
+
+# 3. nvm itself unavailable: resolve the default alias by hand. The alias
+#    file holds a version or prefix ("v26.7.0", "26"); take the newest
+#    installed version that matches it.
+if ! command -v node &> /dev/null && [[ -r $NVM_DIR/alias/default ]]; then
+    default="$(<"$NVM_DIR/alias/default")"
+    for dir in "$NVM_DIR"/versions/node/v${default#v}*(N/nOn); do
+        path=("$dir/bin" $path)
+        break
+    done
+fi
+
+if ! command -v node &> /dev/null; then
+    print -u2 "claude-hook-node: node not found on PATH, via nvm (/usr/share/nvm/init-nvm.sh, $NVM_DIR/nvm.sh) or under $NVM_DIR/versions/node; install node (Arch: nvm package, then 'nvm install node') and retry"
+    exit 127
+fi
+
+exec node "$@"
