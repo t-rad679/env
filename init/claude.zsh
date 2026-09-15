@@ -53,25 +53,4 @@ if grep -q 'PASTE-OBSIDIAN-LOCAL-REST-API-KEY-HERE' "$CONFIG" 2>/dev/null; then
     print "              Local REST API -> copy key) into $CONFIG"
 fi
 
-# Local plugin marketplaces are given by absolute path in settings.json, and
-# Claude Code is not documented to expand ~ there. The committed file uses
-# ~/src/<name>; rewrite every directory-source marketplace to $HOME/src/<name>
-# for this user. Idempotent (no write when nothing changes) and written
-# through the symlink so settings.json stays a link into the repo.
-settings="$CLAUDE_DIR/settings.json"
-if command -v jq &> /dev/null && [[ -r $settings ]]; then
-    filter='.extraKnownMarketplaces |= (if . == null then . else with_entries(
-                if .value.source.source == "directory"
-                then .value.source.path = ($home + "/src/" + (.value.source.path | split("/") | last))
-                else . end) end)'
-    current="$(jq . "$settings" 2>/dev/null)"
-    updated="$(jq --arg home "$HOME" "$filter" "$settings" 2>/dev/null)"
-    if [[ -n $updated && "$updated" != "$current" ]]; then
-        print -r -- "$updated" > "$settings"
-        print "    rewrote local marketplace paths in settings.json to $HOME/src/<name>"
-    fi
-else
-    print -u2 "    jq missing or settings.json unreadable; marketplace paths not rewritten"
-fi
-
 return $rc
