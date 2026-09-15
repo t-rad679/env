@@ -10,6 +10,23 @@
 #
 # Runs under bash on purpose: a brand-new box may not have zsh yet. All it does
 # is install zsh and hand off to init/init.zsh, which does the real work.
+#
+# TODO (left over from the arch/ -> config/ + machines/ restructure, 2026-09-14):
+#   1. Paste the desktop's real ~/.xprofile content (headless Obsidian under its
+#      own Xvfb display, for the Obsidian MCP server) into
+#      machines/desktop/xprofile.sh. It is a marked placeholder until then, so
+#      after init re-links ~/.xprofile that startup stops happening at login.
+#      If init has already run, the old file is at ~/.xprofile.bak.
+#   2. On the desktop, /etc/pacman.conf (and every other link the old init made)
+#      still points at the removed arch/ paths. pacman is broken until
+#      /etc/pacman.conf is re-pointed at config/pacman.conf by hand (this script
+#      runs `pacman -S zsh` before init/pacman.zsh could fix it, and --links-only
+#      skips that step), then re-run init here.
+#   3. Two things noticed but not fixed: (a) on the Mac, Claude Code replaced
+#      the ~/.claude/settings.json symlink with a real file, so the repo copy no
+#      longer receives its writes there; (b) ~/bin/gwt uses ${0:A:h} inside a
+#      function, where $0 is the function name, so its link_worktrees step only
+#      works when run from ~/bin.
 
 set -euo pipefail
 
