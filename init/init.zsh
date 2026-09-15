@@ -10,7 +10,7 @@
 # killing the whole init. Steps are all safe to re-run.
 
 export ENV_DIR="${ENV_DIR:-$HOME/src/env}"
-export MACHINE_ROLE="${MACHINE_ROLE:-laptop}"
+export MACHINE_ROLE="${MACHINE_ROLE:-desktop}"
 INIT_LINKS_ONLY="${INIT_LINKS_ONLY:-0}"
 
 case $MACHINE_ROLE in
@@ -42,7 +42,7 @@ if [[ $INIT_LINKS_ONLY == 0 ]]; then
     run_step "$ENV_DIR/init/node.zsh"     "node via nvm"
 fi
 
-run_step "$ENV_DIR/init/links.zsh"  "symlink ~/bin, zsh files, ~/env, i3, kitty, ~/.xprofile"
+run_step "$ENV_DIR/init/links.zsh"  "symlink zsh files, ~/env, i3, kitty, ~/.xprofile"
 run_step "$ENV_DIR/init/claude.zsh" "Claude config, skills, marketplace paths"
 
 if [[ $INIT_LINKS_ONLY == 0 ]]; then

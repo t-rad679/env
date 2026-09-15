@@ -20,7 +20,7 @@ When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` 
 
 # Machines
 - I use two Arch Linux machines running i3: a desktop and a laptop. Both are provisioned from the env repo at `~/src/env` (i3 config at `~/src/env/config/i3/`, with role-only i3 config under `~/src/env/machines/<role>/i3/`).
-- `$MACHINE_ROLE` (`desktop` or `laptop`, from `~/.config/machine-role.env`) says which machine a shell is on; desktop-only things (gaming, headless Obsidian, Claude remote control, the HDMI-3 greeter config) live under `~/src/env/machines/desktop/`.
+- `$MACHINE_ROLE` (`desktop` or `laptop`, from `~/.config/machine-role.env`; defaults to `desktop` when unset) says which machine a shell is on; desktop-only things (gaming, headless Obsidian, Claude remote control, the HDMI-3 greeter config) live under `~/src/env/machines/desktop/`.
 
 # Shell Scripts
 - Always write shell scripts in zsh (`#!/usr/bin/zsh`) whenever possible, not bash. This applies to every script file you create or edit, in any project, unless something specifically requires bash/sh (e.g. a tool only sources `.bashrc`-style files, or a system hook like `.xprofile` must stay POSIX-compatible) — if so, say why before deviating.

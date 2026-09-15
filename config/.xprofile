@@ -3,13 +3,24 @@
 # starts, so anything exported here is inherited by i3 and every program it
 # launches. POSIX sh on purpose (not zsh): LightDM does not run it under zsh.
 #
-# Managed by the env repo (config/.xprofile), linked by init/links.zsh.
+# Managed by the env repo (config/.xprofile), linked by init/links.zsh. Do not
+# hand-edit ~/.xprofile: role-specific content goes in machines/<role>/xprofile.sh.
 
 # Machine role (desktop|laptop). ~/.config/machine-role.env is a plain
 # KEY=VALUE file linked by init/role.zsh from machines/<role>/machine-role.env.
-# i3 reads $MACHINE_ROLE in its include path (config/i3/config).
+# i3 reads $MACHINE_ROLE in its include path (config/i3/config). Defaults to
+# desktop when the role file is missing (the same default as everywhere else).
 if [ -r "$HOME/.config/machine-role.env" ]; then
     set -a
     . "$HOME/.config/machine-role.env"
     set +a
+fi
+MACHINE_ROLE="${MACHINE_ROLE:-desktop}"
+export MACHINE_ROLE
+
+# Role-only X session setup (desktop: the headless Obsidian / Xvfb startup for
+# Claude's Obsidian MCP server) lives in machines/<role>/xprofile.sh in the env
+# repo, a POSIX sh fragment sourced into this shell.
+if [ -r "$HOME/src/env/machines/${MACHINE_ROLE:-desktop}/xprofile.sh" ]; then
+    . "$HOME/src/env/machines/${MACHINE_ROLE:-desktop}/xprofile.sh"
 fi

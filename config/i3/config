@@ -9,9 +9,13 @@
 #
 # Machine-specific config comes from machines/<role>/i3/*.conf in the env repo.
 # i3 expands include paths with wordexp(3), so $MACHINE_ROLE (exported by
-# ~/.xprofile from ~/.config/machine-role.env) picks the directory. A pattern
-# that matches nothing is skipped without error, but every role directory
-# still ships at least one .conf so the include always resolves.
+# ~/.xprofile from ~/.config/machine-role.env) picks the directory. wordexp
+# also understands ${VAR:-default}, so the role falls back to desktop when the
+# variable is unset (startx, a display manager that doesn't source
+# ~/.xprofile, ...): otherwise the pattern silently matches nothing and the
+# desktop loses `xset s off -dpms`, the TV blanks and HDMI audio dies. Every
+# role directory still ships at least one .conf so the include always
+# resolves.
 
 include conf.d/*.conf
-include $HOME/src/env/machines/$MACHINE_ROLE/i3/*.conf
+include $HOME/src/env/machines/${MACHINE_ROLE:-desktop}/i3/*.conf

@@ -2,8 +2,8 @@
 
 # Entry point for provisioning a fresh Arch install (either machine role).
 #
-#   init/init.sh                  # laptop (default)
-#   init/init.sh --desktop        # desktop (--desktopMode also accepted)
+#   init/init.sh                  # desktop (default; --desktopMode also ok)
+#   init/init.sh --laptop         # laptop
 #   init/init.sh --links-only     # only the symlink/config steps: no packages,
 #                                 # no network, no chsh (safe re-run on a
 #                                 # machine that is already set up)
@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-role=laptop
+role=desktop
 links_only=0
 for arg in "$@"; do
     case "$arg" in

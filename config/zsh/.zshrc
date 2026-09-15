@@ -11,11 +11,14 @@ autoload -U +X compinit && compinit
 # MACHINE_ROLE (desktop|laptop) comes from ~/.config/machine-role.env, which
 # init links to machines/<role>/machine-role.env in the env repo. Read it before
 # the env scripts so any of them can branch on it regardless of filename order.
+# Defaults to desktop when the file is missing (the same default as i3,
+# ~/.xprofile and init use).
 if [[ -r ~/.config/machine-role.env ]]; then
   set -a
   source ~/.config/machine-role.env
   set +a
 fi
+export MACHINE_ROLE="${MACHINE_ROLE:-desktop}"
 
 # --- antidote (zsh plugin manager) ---
 # Source antidote from wherever it lives on this machine and load the plugins
