@@ -42,6 +42,16 @@ if [[ -d "$ENV_DIR/machines/$MACHINE_ROLE/autorandr" ]]; then
     link_path "$ENV_DIR/machines/$MACHINE_ROLE/autorandr" "$HOME/.config/autorandr" || rc=1
 fi
 
+# WirePlumber drop-in config, per role. Only the laptop ships one: the CUBILUX
+# CA7 USB DAC on its dock needs a rule to be usable at all (ALSA's card profile
+# points "Analog Stereo Output" at the wrong PCM device, so the jack stays
+# silent -- see the file itself for the full story). Linked as a whole
+# directory like autorandr above, and skipped when the role ships no
+# wireplumber/ directory rather than dangling.
+if [[ -d "$ENV_DIR/machines/$MACHINE_ROLE/wireplumber" ]]; then
+    link_path "$ENV_DIR/machines/$MACHINE_ROLE/wireplumber" "$HOME/.config/wireplumber" || rc=1
+fi
+
 # ~/.xprofile: sourced by LightDM before i3 starts; exports MACHINE_ROLE into
 # the X session and sources machines/<role>/xprofile.sh. (POSIX sh, not zsh,
 # because LightDM runs it with sh.) A hand-maintained real ~/.xprofile (the
