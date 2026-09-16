@@ -12,3 +12,9 @@
 # seconds. X re-probes on each one, i3 tears down and rebuilds its bar, and
 # every window gets resized twice a second.
 autorandr
+
+# Backlight control for the internal panel. Driven via
+# machines/laptop/bin/brightness-step from the F7/F8 bindings in i3/laptop.conf.
+# Its udev rule grants the *video* group write access to /sys/class/backlight,
+# which is why init.zsh below adds the user to that group.
+brightnessctl

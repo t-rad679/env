@@ -1,0 +1,59 @@
+#!/usr/bin/zsh
+
+# Step the internal panel backlight, clamped so it never goes fully dark.
+#
+# Usage: brightness-step up|down
+#
+# Why this exists instead of `brightnessctl set 5%-` straight from the i3
+# binding: that walks all the way down to 0, and the way back is to find the
+# brightness-up key on an unlit keyboard in the dark. brightnessctl's own
+# --min-value could do it, but doing the arithmetic here keeps the floor and
+# the step size named, in one place, and checkable with `zsh -n`.
+#
+# Device selection is left to brightnessctl (it picks the first backlight
+# class device), so nothing here hardcodes amdgpu_bl1.
+
+set -u
+
+local -i STEP_PCT=5
+local -i FLOOR_PCT=5
+
+local direction="${1:-}"
+if [[ "$direction" != up && "$direction" != down ]]; then
+    print -u2 "usage: ${0:t} up|down"
+    exit 2
+fi
+
+# `brightnessctl -m` is the machine-readable form:
+#   device,class,current,percent%,max   e.g. amdgpu_bl1,backlight,32767,50%,65535
+local info
+if ! info="$(brightnessctl -m)"; then
+    print -u2 "${0:t}: brightnessctl failed -- is it installed, and are you in the video group?"
+    exit 1
+fi
+
+local -a fields=( ${(s:,:)info} )
+local -i current=${fields[3]}
+local -i max=${fields[5]}
+if (( max <= 0 )); then
+    print -u2 "${0:t}: no usable backlight device (max_brightness=$max)"
+    exit 1
+fi
+
+local -i step=$(( max * STEP_PCT / 100 ))
+local -i floor=$(( max * FLOOR_PCT / 100 ))
+local -i target
+
+if [[ "$direction" == up ]]; then
+    target=$(( current + step ))
+else
+    target=$(( current - step ))
+fi
+
+# Clamp into [floor, max]. A backlight that was already parked below the floor
+# by something else gets pulled up to it on the next press; that is a deliberate
+# trade for never being able to reach 0 from these keys.
+(( target < floor )) && target=$floor
+(( target > max )) && target=$max
+
+exec brightnessctl -q set "$target"

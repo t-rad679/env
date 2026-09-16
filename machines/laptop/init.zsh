@@ -28,3 +28,22 @@ sudo systemctl daemon-reload
 # machine -- docking and then resuming is what started the whole hotplug-storm
 # investigation, because the dock comes back before X re-checks its outputs.
 sudo systemctl enable autorandr.service
+
+# Backlight keys (F7/F8 in i3/laptop.conf) write to /sys/class/backlight, which
+# is root-owned. brightnessctl ships a udev rule granting the video group write
+# access there, so membership in that group is the whole permission story --
+# without it the keys bind fine and then silently do nothing, which is a
+# miserable thing to debug.
+#
+# usermod -aG is additive, but run it only when needed so re-runs stay quiet.
+# The new group doesn't apply to the session that ran this: it's granted at
+# login, so it takes a logout (or a reboot) to take effect.
+local -a user_groups=( ${=$(id -nG "$USER")} )
+if (( ${user_groups[(I)video]} )); then
+    print "    $USER is already in the video group"
+elif sudo usermod -aG video "$USER"; then
+    print "    added $USER to the video group -- log out and back in for it to apply"
+else
+    print -u2 "    FAILED to add $USER to the video group (brightness keys will no-op)"
+    return 1
+fi

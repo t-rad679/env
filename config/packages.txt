@@ -25,3 +25,11 @@ playerctl
 feh
 xprintidle
 imagemagick
+xrandr
+discord
+signal-desktop
+brightnessctl
+
+# Interactive screenshot tool: crop, annotate, then copy or save.
+# Bound to Print (F11) in config/i3/conf.d/fnrow.conf.
+flameshot
