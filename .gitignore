@@ -7,3 +7,26 @@ claude/config.json
 # config/spotify-mcp/spotify-config.sample.json to ~/src/spotify-mcp-server/
 # and the server writes tokens there; nothing with credentials belongs here.
 config/spotify-mcp/spotify-config.json
+
+# Belt-and-braces for shell credentials. The real ones live in
+# ~/.config/env-secrets.zsh, outside this repo entirely (see
+# config/zsh/env/claude.zsh) -- git has no view of that path, which is the
+# actual protection. These patterns only catch a secrets file that someone
+# later drops into the working tree by habit.
+#
+# Note what an ignore rule cannot do: claude/settings.json is TRACKED and
+# ~/.claude/settings.json is a symlink to it, so anything Claude Code writes
+# into its settings goes straight into git. That is exactly how three mem0 API
+# keys reached a public repo. Ignoring does not apply to tracked files.
+config/zsh/env/secrets.zsh
+config/zsh/env/*.secret.zsh
+env-secrets.zsh
+
+# macOS resource forks. A round-trip of this repo through a FAT/exFAT stick or
+# a macOS-formatted volume sprays an AppleDouble "._<name>" sidecar next to
+# every file (83 of them last time) and sets the execute bit on everything it
+# touches. The sidecars are pure noise; the mode damage has to be undone with
+# `git ls-files -s` + chmod, since core.fileMode=false would only hide it -- and
+# this repo has real scripts whose 755 bit matters.
+._*
+.DS_Store
