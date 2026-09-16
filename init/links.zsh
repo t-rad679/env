@@ -31,6 +31,17 @@ link_path "$ENV_DIR/config/i3" "$HOME/.config/i3" || rc=1
 # kitty terminal config (font, etc).
 link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" || rc=1
 
+# autorandr display profiles, per role. Only the laptop has a set (it docks);
+# the desktop's single monitor needs no profile at all, so the link is skipped
+# when the role ships no autorandr/ directory rather than dangling.
+#
+# The whole directory is linked (like i3 above) because autorandr writes into
+# it: `autorandr --save <name>` creates ~/.config/autorandr/<name>/, which
+# lands in the repo and shows up in `git status` ready to commit.
+if [[ -d "$ENV_DIR/machines/$MACHINE_ROLE/autorandr" ]]; then
+    link_path "$ENV_DIR/machines/$MACHINE_ROLE/autorandr" "$HOME/.config/autorandr" || rc=1
+fi
+
 # ~/.xprofile: sourced by LightDM before i3 starts; exports MACHINE_ROLE into
 # the X session and sources machines/<role>/xprofile.sh. (POSIX sh, not zsh,
 # because LightDM runs it with sh.) A hand-maintained real ~/.xprofile (the

@@ -1,3 +1,14 @@
 # Laptop-only packages. Installed by init/pacman.zsh together with the shared
 # list in config/packages.txt (same format: one per line, # for comments, repo
-# or AUR). Nothing yet.
+# or AUR).
+
+# Saves/restores the X display layout per monitor set, keyed on EDID, and
+# switches profiles automatically on dock/undock via the udev rule + systemd
+# units it ships. Profiles live in machines/laptop/autorandr/, linked to
+# ~/.config/autorandr by init/links.zsh.
+#
+# Not cosmetic: without it the laptop boots with the dock's monitors
+# "connected but disabled", which makes amdgpu fire a hotplug IRQ every few
+# seconds. X re-probes on each one, i3 tears down and rebuilds its bar, and
+# every window gets resized twice a second.
+autorandr
