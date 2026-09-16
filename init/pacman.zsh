@@ -14,7 +14,7 @@ source "${ENV_DIR:-$HOME/src/env}/init/lib.zsh"
 sudo_link_path "$ENV_DIR/config/pacman.conf" /etc/pacman.conf
 
 # git is needed to bootstrap yay
-sudo pacman -S --needed git
+sudo pacman -S --needed git base-devel
 
 # Bootstrap the yay AUR helper
 source "$ENV_DIR/init/yay.zsh"
