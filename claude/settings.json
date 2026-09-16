@@ -1,8 +1,5 @@
 {
-  "env": {
-    "MEM0_API_KEY": "m0-yObAbc8G40Qd1xgTUWd5jM5IQ38yqcgcCG4SIWJ7"
-  },
-  "model": "claude-fable-5-1[1m]",
+  "model": "opus[1m]",
   "statusLine": {
     "type": "command",
     "command": "bash $HOME/src/env/claude/statusline-command.sh"
@@ -61,8 +58,8 @@
     "mode": "hold"
   },
   "skipWorkflowUsageWarning": true,
+  "theme": "auto",
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
 }
