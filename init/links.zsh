@@ -31,6 +31,17 @@ link_path "$ENV_DIR/config/i3" "$HOME/.config/i3" || rc=1
 # kitty terminal config (font, etc).
 link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" || rc=1
 
+# Wallpapers -> ~/pics/wallpapers. The image itself has to be provisioned, not
+# just the config that points at it: bin/wallpaper (run from i3's autostart)
+# only prints to stderr when the file is missing, so a fresh machine would come
+# up with the black root window this was meant to fix.
+#
+# The whole directory is linked, like i3 above and autorandr below: dropping a
+# new image into ~/pics/wallpapers then puts it in the repo, ready to commit,
+# instead of leaving it behind on one machine. ~/pics is not created by fs.zsh
+# because link_path already mkdir -p's the parent of its destination.
+link_path "$ENV_DIR/config/wallpapers" "$HOME/pics/wallpapers" || rc=1
+
 # autorandr display profiles, per role. Only the laptop has a set (it docks);
 # the desktop's single monitor needs no profile at all, so the link is skipped
 # when the role ships no autorandr/ directory rather than dangling.

@@ -1,0 +1,27 @@
+#!/usr/bin/zsh
+
+# Paint the X root window so an empty monitor shows the wallpaper instead of
+# the default black. i3 never draws the root window itself, so without this
+# every workspace with no windows on it is a black rectangle.
+#
+# feh is built with xinerama here, so a single --bg-fill scales the image to
+# each output separately -- which is what the mixed-DPI laptop dock needs
+# (2560x1600 eDP + 3840x2160 + 1920x1080). --no-fehbg skips writing the
+# ~/.fehbg restore script: the wallpaper is set from i3's autostart and from
+# the autorandr hook, so nothing ever sources it.
+#
+# Called from config/i3/conf.d/autostart.conf at login and on i3 restart, and
+# from machines/laptop/autorandr/postswitch after every dock/undock, because a
+# resolution change leaves the old root pixmap unscaled. Safe to run by hand
+# (it is on PATH via config/zsh/env/path.zsh) and safe to run repeatedly.
+
+set -u
+
+local -r WALLPAPER="${1:-$HOME/pics/wallpapers/LSZEE Skylight Red Rocks.jpg}"
+
+if [[ ! -r "$WALLPAPER" ]]; then
+    print -u2 "wallpaper: no readable image at $WALLPAPER"
+    exit 1
+fi
+
+exec feh --no-fehbg --bg-fill "$WALLPAPER"

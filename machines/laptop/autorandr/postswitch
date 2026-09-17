@@ -13,6 +13,10 @@
 # fire on every event. Guarded on the script existing so a half-provisioned
 # laptop still switches profiles cleanly.
 #
+# Repainting the wallpaper has to happen again too: the root pixmap is sized
+# for the layout that was live when it was painted, so a newly enabled output
+# comes up black and a resolution change leaves the old image unscaled.
+#
 # Global (not docked/postswitch or undocked/postswitch) on purpose: undocking
 # matters as much as docking here, and a profile-specific hook would silently
 # not run for the --default fallback.
@@ -20,7 +24,12 @@
 set -u
 
 local -r PIN="$HOME/src/env/machines/laptop/bin/ws3-output"
+local -r WALLPAPER="$HOME/src/env/bin/wallpaper"
 
 if [[ -x "$PIN" ]]; then
     "$PIN"
+fi
+
+if [[ -x "$WALLPAPER" ]]; then
+    "$WALLPAPER"
 fi
