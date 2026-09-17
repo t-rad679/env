@@ -30,3 +30,10 @@ env-secrets.zsh
 # this repo has real scripts whose 755 bit matters.
 ._*
 .DS_Store
+
+# Claude Code's project-local settings for this repo. Machine-local by
+# convention and rewritten by Claude Code itself (it adds permissions as they
+# are granted), so tracking it would mean a diff after every session -- the
+# same trap the claude/settings.json note above describes, just without the
+# secrets exposure.
+.claude/settings.local.json
