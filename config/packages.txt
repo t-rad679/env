@@ -34,3 +34,11 @@ tailscale
 # Interactive screenshot tool: crop, annotate, then copy or save.
 # Bound to Print (F11) in config/i3/conf.d/fnrow.conf.
 flameshot
+
+# Notification daemon. Owns org.freedesktop.Notifications; without it nothing
+# answers notify-send, and flameshot warns "No DBus System Notification service
+# found" and drops its "saved as ..." popup on the floor.
+#
+# config/i3/conf.d/autostart.conf has always exec'd dunst, but the package was
+# never in this list, so on a fresh machine that exec failed silently.
+dunst
