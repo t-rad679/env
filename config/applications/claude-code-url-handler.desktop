@@ -1,0 +1,29 @@
+[Desktop Entry]
+# Handles claude-cli:// deep links. Claude Code installs this entry itself, in
+# ~/.local/share/applications; this is a repo-managed replacement whose only
+# difference is Exec, which goes through bin/claude-env instead of calling the
+# binary directly.
+#
+# Why: a .desktop entry is launched by the desktop environment, not by a shell,
+# so it never sources ~/env and never gets MEM0_API_KEY. Claude Code then runs
+# with mem0 silently disabled. claude-env sources ~/.config/env-secrets.zsh
+# first and execs the real binary -- see that script for the full story.
+#
+# This one is RENDERED by init/links.zsh, not symlinked: the placeholder in
+# Exec is replaced with the repo's real path (which is why no other line may
+# contain it). A .desktop Exec is not run through a shell, so it cannot
+# expand $HOME -- and the two machines have different usernames, so the literal
+# path cannot live in the repo either. Field codes (%u) must stay outside
+# quotes and outside any `sh -c`, which is why this is not solved with a
+# wrapper command; the launcher then substitutes nothing and Claude Code opens
+# with no URI.
+#
+# Claude Code may rewrite its own copy on update. Re-running init restores this
+# version; if deep links start losing mem0, diff ~/.local/share/applications/
+# claude-code-url-handler.desktop against this file.
+Name=Claude Code URL Handler
+Comment=Handle claude-cli:// deep links for Claude Code
+Exec=@ENV_DIR@/bin/claude-env --handle-uri %u
+Type=Application
+NoDisplay=true
+MimeType=x-scheme-handler/claude-cli;

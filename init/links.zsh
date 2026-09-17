@@ -70,4 +70,27 @@ if [[ -e $HOME/.xprofile && ! -L $HOME/.xprofile ]]; then
 fi
 link_path "$ENV_DIR/config/.xprofile" "$HOME/.xprofile" || rc=1
 
+# The claude-cli:// URL handler, pointed at bin/claude-env so a deep link
+# opened from the browser gets the credentials in ~/.config/env-secrets.zsh
+# (a .desktop entry is launched by the desktop, not by a shell, so it never
+# sources ~/env and mem0 silently records nothing).
+#
+# Rendered, not linked: a .desktop Exec is not run through a shell, so it
+# cannot expand $HOME, and a literal path cannot be committed because the two
+# machines have different usernames. Written only when the result differs, so
+# re-running init is a no-op rather than a fresh mtime every time.
+desktop_src="$ENV_DIR/config/applications/claude-code-url-handler.desktop"
+desktop_dest="$HOME/.local/share/applications/claude-code-url-handler.desktop"
+if [[ -r "$desktop_src" ]]; then
+    rendered="${$(<"$desktop_src")//@ENV_DIR@/$ENV_DIR}"
+    if [[ ! -e "$desktop_dest" || "$(<"$desktop_dest")" != "$rendered" ]]; then
+        if mkdir -p "${desktop_dest:h}" && print -r -- "$rendered" > "$desktop_dest"; then
+            print "rendered $desktop_dest"
+        else
+            print -u2 "FAILED to render $desktop_dest"
+            rc=1
+        fi
+    fi
+fi
+
 return $rc

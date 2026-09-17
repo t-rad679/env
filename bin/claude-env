@@ -1,0 +1,47 @@
+#!/usr/bin/zsh
+
+# Launch Claude Code with the shell's credentials loaded.
+#
+# Usage: claude-env [claude arguments...]
+#
+# Credentials (MEM0_API_KEY and anything else added later) live in
+# ~/.config/env-secrets.zsh, sourced by config/zsh/env/claude.zsh. That only
+# runs for shells that load ~/env, so Claude Code started from ulauncher, a
+# .desktop entry, a URL handler or a systemd user unit gets an environment
+# with no key in it.
+#
+# Nothing reports that. The mem0 plugin's api_key() falls back to a cache file
+# that init never creates, gets an empty string, and the plugin silently stops
+# recording -- the failure looks exactly like a quiet session. Same shape as
+# the problem bin/claude-hook-node solves for node, so it gets the same shape
+# of fix: a wrapper that reconstructs what the shell would have provided.
+#
+# Deliberately NOT done by sourcing the secrets from config/.xprofile: that
+# would put the key in the environment of every process in the X session --
+# browser, games, chat clients -- rather than just Claude Code.
+
+# Already-exported values win, so a wrapper run from a normal shell changes
+# nothing about that shell's environment.
+if [[ -z "${MEM0_API_KEY:-}" && -r "$HOME/.config/env-secrets.zsh" ]]; then
+    source "$HOME/.config/env-secrets.zsh"
+fi
+
+if [[ -z "${MEM0_API_KEY:-}" ]]; then
+    # Not fatal: Claude Code runs fine without mem0. Worth saying out loud
+    # because the alternative is memory silently never being written.
+    print -u2 "claude-env: MEM0_API_KEY is not set and ~/.config/env-secrets.zsh is not readable; mem0 will not record this session"
+fi
+
+# The packaged path first, because that is what the .desktop entries use.
+# `command -v claude` is the fallback, guarded so this script cannot exec
+# itself if it is ever renamed onto PATH as `claude`.
+local claude_bin="/opt/claude-code/bin/claude"
+if [[ ! -x "$claude_bin" ]]; then
+    claude_bin="$(command -v claude 2>/dev/null)"
+    if [[ -z "$claude_bin" || "${claude_bin:A}" == "${0:A}" ]]; then
+        print -u2 "claude-env: claude not found at /opt/claude-code/bin/claude or on PATH"
+        exit 127
+    fi
+fi
+
+exec "$claude_bin" "$@"
