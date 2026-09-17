@@ -1,0 +1,26 @@
+#!/usr/bin/zsh
+
+# autorandr hook: runs after every profile switch, including the udev/systemd
+# hotplug path that fires on dock and undock.
+#
+# Re-pins workspace 3 (the chat grid) to the ViewSonic, which has to happen
+# again after every switch: moving a workspace onto an output that autorandr
+# then turns off leaves i3 to reshuffle it wherever it likes, so the pin does
+# not survive a dock cycle on its own.
+#
+# ws3-output is a no-op when the ViewSonic is absent, when i3 is not running
+# and when the workspace is already on the right output, so this is safe to
+# fire on every event. Guarded on the script existing so a half-provisioned
+# laptop still switches profiles cleanly.
+#
+# Global (not docked/postswitch or undocked/postswitch) on purpose: undocking
+# matters as much as docking here, and a profile-specific hook would silently
+# not run for the --default fallback.
+
+set -u
+
+local -r PIN="$HOME/src/env/machines/laptop/bin/ws3-output"
+
+if [[ -x "$PIN" ]]; then
+    "$PIN"
+fi

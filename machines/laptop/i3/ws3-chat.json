@@ -1,0 +1,73 @@
+// Saved i3 layout for the workspace 3 chat grid, applied by
+// machines/laptop/bin/chat-grid via `i3-msg append_layout` BEFORE the four
+// apps are launched. Each leaf below is a placeholder that swallows the first
+// window matching its criteria, which is what pins each app to its corner:
+//
+//     Messenger | Messages
+//     ----------+---------
+//     Signal    | Discord
+//
+// Deliberately ONE root container (splitv) rather than two top-level rows: a
+// workspace picks its own default orientation from the output's aspect ratio,
+// so two top-level nodes would sit side by side on a landscape monitor
+// instead of stacking. Nesting everything under an explicit splitv makes the
+// 2x2 come out the same on any output.
+//
+// Criteria notes:
+//   * Messenger and Messages are Chrome PWAs. Their WM class is the shared
+//     "Google-chrome"; only the INSTANCE carries the app id, so matching on
+//     class here would swallow the first ordinary browser window instead.
+//   * Signal and Discord report lowercase classes ("signal", "discord"), not
+//     the capitalised names their .desktop files use.
+//
+// This file is .json, not .conf, so the `include machines/$MACHINE_ROLE/i3/*.conf`
+// in config/i3/config does not try to parse it as config.
+{
+    "layout": "splitv",
+    "percent": 1.0,
+    "type": "con",
+    "nodes": [
+        {
+            "layout": "splith",
+            "percent": 0.5,
+            "type": "con",
+            "nodes": [
+                {
+                    "type": "con",
+                    "percent": 0.5,
+                    "swallows": [
+                        { "instance": "^crx_bbdeiblfgdokhlblpgeaokenkfknecgl$" }
+                    ]
+                },
+                {
+                    "type": "con",
+                    "percent": 0.5,
+                    "swallows": [
+                        { "instance": "^crx_hpfldicfbfomlpcikngkocigghgafkph$" }
+                    ]
+                }
+            ]
+        },
+        {
+            "layout": "splith",
+            "percent": 0.5,
+            "type": "con",
+            "nodes": [
+                {
+                    "type": "con",
+                    "percent": 0.5,
+                    "swallows": [
+                        { "class": "^signal$" }
+                    ]
+                },
+                {
+                    "type": "con",
+                    "percent": 0.5,
+                    "swallows": [
+                        { "class": "^discord$" }
+                    ]
+                }
+            ]
+        }
+    ]
+}

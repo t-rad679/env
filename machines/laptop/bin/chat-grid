@@ -1,0 +1,90 @@
+#!/usr/bin/zsh
+
+# Build the workspace 3 chat grid: Messenger, Messages, Signal and Discord in
+# a 2x2, on the ViewSonic when docked.
+#
+# Usage: chat-grid         (no arguments; i3 execs it at login)
+#
+#     Messenger | Messages
+#     ----------+---------
+#     Signal    | Discord
+#
+# i3 cannot express a grid in its config, so the corners come from a saved
+# layout (machines/laptop/i3/ws3-chat.json) appended to ws3 BEFORE the apps
+# start. That layout is four placeholder containers with swallow criteria; each
+# app's window is captured by the placeholder that matches it, which is what
+# makes the positions deterministic instead of "wherever i3 happened to split".
+# Order of operations matters -- an app launched before its placeholder exists
+# just tiles normally and never gets swallowed.
+#
+# The plain `assign` rules in machines/laptop/i3/autostart.conf are the
+# fallback for later: once these placeholders are used up, relaunching e.g.
+# Signal by hand still lands it on ws3, just without a reserved corner.
+
+set -u
+
+local -r LAYOUT="$HOME/src/env/machines/laptop/i3/ws3-chat.json"
+local -r WS="3"
+
+if ! i3-msg -t get_version >/dev/null 2>&1; then
+    print -u2 "${0:t}: i3 is not running"
+    exit 1
+fi
+
+if [[ ! -r "$LAYOUT" ]]; then
+    print -u2 "${0:t}: layout not readable: $LAYOUT"
+    exit 1
+fi
+
+# Re-running this would append a second set of placeholders and launch
+# duplicate apps, so bail if the grid is already up. i3 execs this with `exec`
+# (once per i3 start, not on reload), but it is also the kind of thing you run
+# by hand after killing a misbehaving client.
+local existing
+existing="$(i3-msg -t get_tree | jq -r '
+    [ .. | objects | select(has("window_properties"))
+      | .window_properties
+      | select(
+            (.class // "") == "signal" or
+            (.class // "") == "discord" or
+            (.instance // "") == "crx_bbdeiblfgdokhlblpgeaokenkfknecgl" or
+            (.instance // "") == "crx_hpfldicfbfomlpcikngkocigghgafkph"
+        )
+    ] | length')"
+if [[ "${existing:-0}" -gt 0 ]]; then
+    print -u2 "${0:t}: chat windows already running; only re-pinning the output"
+    exec "${0:h}/ws3-output"
+fi
+
+# append_layout applies to the focused workspace, so ws3 has to be focused for
+# the duration. --no-auto-back-and-forth so this does not become the workspace
+# that back-and-forth returns to.
+local previous
+previous="$(i3-msg -t get_workspaces | jq -r '.[] | select(.focused) | .name')"
+
+i3-msg -q "workspace --no-auto-back-and-forth $WS; append_layout $LAYOUT" || exit 1
+
+# Placeholders wait indefinitely for a matching window, so there is nothing to
+# synchronise here -- the apps can take as long as they like to start.
+#
+# setsid, not a bare `&!`: disowning only detaches the job from this shell, it
+# leaves the child in the same process group. Anything that signals the group
+# when this script finishes -- a terminal you ran it from, or a tool harness --
+# then takes the apps down with it, and a Chrome app launcher killed mid-
+# handoff loses the window it was opening. setsid puts each app in its own
+# session so nothing upstream can reach it.
+setsid -f google-chrome-stable --profile-directory=Default \
+    --app-id=bbdeiblfgdokhlblpgeaokenkfknecgl >/dev/null 2>&1
+setsid -f google-chrome-stable --profile-directory=Default \
+    --app-id=hpfldicfbfomlpcikngkocigghgafkph >/dev/null 2>&1
+setsid -f signal-desktop >/dev/null 2>&1
+setsid -f discord >/dev/null 2>&1
+
+if [[ -n "$previous" && "$previous" != "$WS" ]]; then
+    i3-msg -q "workspace --no-auto-back-and-forth $previous"
+fi
+
+# Put the workspace on the ViewSonic if the dock is attached. Done here rather
+# than as a second i3 `exec` so it cannot race this one: ws3 provably exists by
+# now, and i3 can only move a workspace that exists.
+exec "${0:h}/ws3-output"
