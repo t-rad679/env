@@ -9,7 +9,7 @@ When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` 
 
 # Obsidian
 - **Reads: prefer the Obsidian MCP servers** (`obsidian`, `obsidian-tools`) over built-in tools — search, get/list notes, tags, semantic search, etc.
-- **Writes: use built-in tools (Read/Edit/Write), not the Obsidian MCP write tools** (`obsidian_write_note`, `obsidian_patch_note`, `obsidian_append_to_note`, `obsidian_replace_in_note`, `obsidian_delete_note`, `obsidian_manage_frontmatter`, etc.). The vault is a plain git repo of Markdown files on disk, so built-in tools work fine and — unlike the MCP write tools — surface a diff/permission prompt before the change lands.
+- **Writes: use built-in tools (Read/Edit/Write), not the Obsidian MCP write tools** (`obsidian_write_note`, `obsidian_patch_note`, `obsidian_append_to_note`, `obsidian_replace_in_note`, `obsidian_delete_note`, `obsidian_manage_frontmatter`, etc.). The vault is plain Markdown files on disk, so built-in tools work fine and — unlike the MCP write tools — surface a diff/permission prompt before the change lands.
 - **Frontmatter array properties use the multiline (block) format, not inline brackets.** Write each item on its own `-` line:
   ```yaml
   related:
