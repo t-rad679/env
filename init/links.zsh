@@ -31,6 +31,25 @@ link_path "$ENV_DIR/config/i3" "$HOME/.config/i3" || rc=1
 # kitty terminal config (font, etc).
 link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" || rc=1
 
+# flameshot. The setting that matters is useX11LegacyScreenshot=true.
+#
+# Flameshot 14 captures through the xdg-desktop-portal Screenshot interface by
+# default, and nothing under i3 implements it: the only backend installed is
+# xdg-desktop-portal-gtk, whose gtk.portal declares no
+# org.freedesktop.impl.portal.Screenshot, and every other backend in the repos
+# is a shim over a compositor we do not run (gnome-shell, KWin, wlroots). So
+# the D-Bus call is never answered, flameshot gives up after 30s and prints
+# "Unable to capture screen" -- i.e. the Print binding in i3/conf.d/fnrow.conf
+# does nothing at all. The legacy path is Qt's direct X11 grab; flameshot's own
+# help text names i3 as the case for enabling it.
+#
+# Linked as a whole directory (like autorandr below) rather than as a single
+# file: flameshot rewrites flameshot.ini through Qt's QSettings whenever a
+# setting changes in its GUI, and that rewrite replaces the file instead of
+# writing through the symlink -- so a file link would silently detach from the
+# repo the first time a setting is touched.
+link_path "$ENV_DIR/config/flameshot" "$HOME/.config/flameshot" || rc=1
+
 # Wallpapers -> ~/pics/wallpapers. The image itself has to be provisioned, not
 # just the config that points at it: bin/wallpaper (run from i3's autostart)
 # only prints to stderr when the file is missing, so a fresh machine would come
