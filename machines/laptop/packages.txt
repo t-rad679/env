@@ -18,3 +18,6 @@ autorandr
 # Its udev rule grants the *video* group write access to /sys/class/backlight,
 # which is why init.zsh below adds the user to that group.
 brightnessctl
+
+obs-studio
+
