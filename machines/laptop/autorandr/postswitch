@@ -24,10 +24,17 @@
 set -u
 
 local -r PIN="$HOME/src/env/machines/laptop/bin/ws3-output"
+local -r PIN_WS4="$HOME/src/env/machines/laptop/bin/ws4-output"
 local -r WALLPAPER="$HOME/src/env/bin/wallpaper"
 
 if [[ -x "$PIN" ]]; then
     "$PIN"
+fi
+
+# Workspace 4 to the Samsung. This also re-points the i3 config rule at the
+# Samsung's new connector and reloads i3; see the script.
+if [[ -x "$PIN_WS4" ]]; then
+    "$PIN_WS4"
 fi
 
 if [[ -x "$WALLPAPER" ]]; then

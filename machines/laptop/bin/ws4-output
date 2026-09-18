@@ -1,0 +1,110 @@
+#!/usr/bin/zsh
+
+# Pin workspace 4 to the Samsung 4K monitor on the dock.
+#
+# Usage: ws4-output        (no arguments; safe to run at any time)
+#
+# The connector name is resolved from the monitor's EDID at run time, for the
+# same reason as ws3-output: this laptop's DisplayPort connector numbers swap
+# between boots, so `workspace 4 output DisplayPort-7` in the config would be
+# wrong about half the time.
+#
+# Unlike ws3-output, this pins the workspace from the moment it is CREATED,
+# not only when it already exists. It does that in two parts:
+#
+#   1. Publish the connector as the X resource i3wm.ws4_output. The i3 config
+#      (machines/laptop/i3/laptop.conf) reads it with set_from_resource into
+#      an ordinary `workspace 4 output` rule, so $mod+4 opens ws4 on the
+#      Samsung even if it did not exist yet. When the Samsung is absent the
+#      resource is set to a name no output has, which makes i3 ignore the rule
+#      and open ws4 wherever it would anyway.
+#   2. If i3 is running and the connector changed, reload i3 so it re-reads
+#      the resource, then move ws4 if it already exists. The rule from step 1
+#      only applies to workspaces created after the reload.
+#
+# Called from two places:
+#   * machines/laptop/xprofile.sh, after the login `autorandr --change`,
+#     before i3 starts, so i3 reads the right value on its first config load.
+#     That call can't be left to the autorandr hook, because autorandr skips
+#     the hook when the profile is already applied.
+#   * machines/laptop/autorandr/postswitch, for docking/undocking while
+#     already logged in.
+
+set -u
+
+# EDID model name of the dock's Samsung 32" 4K (the string the panel reports
+# in `autorandr --fingerprint`, not the marketing name).
+local -r MONITOR_MODEL="LS32A70"
+local -r WS="4"
+local -r RESOURCE="i3wm.ws4_output"
+# Deliberately not a real connector name: i3 ignores a `workspace N output`
+# rule whose output does not exist. Keep in sync with the fallback in
+# laptop.conf.
+local -r ABSENT="none"
+
+# No X, nothing to do. autorandr's hotplug units run outside a login session.
+if [[ -z "${DISPLAY:-}" ]]; then
+    exit 0
+fi
+
+if ! command -v autorandr >/dev/null 2>&1; then
+    print -u2 "${0:t}: autorandr not installed; cannot resolve $MONITOR_MODEL"
+    exit 1
+fi
+
+# EDID stores the model as plain ASCII, so look for its hex encoding inside
+# each output's fingerprint (same approach as ws3-output).
+local model_hex=""
+local -i i
+for (( i = 1; i <= ${#MONITOR_MODEL}; i++ )); do
+    model_hex+="$(printf '%02x' "'${MONITOR_MODEL[i]}")"
+done
+
+local line connector="$ABSENT"
+line="$(autorandr --fingerprint 2>/dev/null | grep -i -m1 -- "$model_hex")"
+if [[ -n "$line" ]]; then
+    connector="${line%% *}"
+fi
+
+local previous_connector
+previous_connector="$(xrdb -get "$RESOURCE" 2>/dev/null)"
+if [[ "$previous_connector" != "$connector" ]]; then
+    print -r -- "$RESOURCE: $connector" | xrdb -merge || exit 1
+fi
+
+# i3 not up yet (the login path). It will read the resource when it starts.
+if ! i3-msg -t get_version >/dev/null 2>&1; then
+    exit 0
+fi
+
+if [[ "$previous_connector" != "$connector" ]]; then
+    i3-msg -q reload || exit 1
+fi
+
+if [[ "$connector" == "$ABSENT" ]]; then
+    exit 0
+fi
+
+local workspaces
+workspaces="$(i3-msg -t get_workspaces)" || exit 1
+
+# Nothing to move if the workspace has never been opened; the config rule
+# covers it from here on.
+local ws_output
+ws_output="$(print -r -- "$workspaces" | jq -r --arg ws "$WS" \
+    '.[] | select(.name == $ws) | .output')"
+if [[ -z "$ws_output" || "$ws_output" == "$connector" ]]; then
+    exit 0
+fi
+
+# `move workspace to output` acts on the focused workspace, so focus has to go
+# to ws4 and come back. --no-auto-back-and-forth keeps this from clobbering the
+# back-and-forth target.
+local previous
+previous="$(print -r -- "$workspaces" | jq -r '.[] | select(.focused) | .name')"
+
+i3-msg -q "workspace --no-auto-back-and-forth $WS; move workspace to output $connector" || exit 1
+
+if [[ -n "$previous" && "$previous" != "$WS" ]]; then
+    i3-msg -q "workspace --no-auto-back-and-forth $previous"
+fi
