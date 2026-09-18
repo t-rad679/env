@@ -1,0 +1,7 @@
+# ~/.ssh/config, linked by init/links.zsh on both machines. Host aliases only:
+# keys, known_hosts and ssh-agent state stay per-machine in ~/.ssh and never
+# belong in this repo.
+
+# deepthought over Tailscale: `ssh tradical@deepthought`.
+Host deepthought
+    HostName deepthought.tail4f04da.ts.net

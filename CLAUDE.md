@@ -9,7 +9,7 @@ Personal environment/dotfiles for two Arch Linux + i3 machines, a **desktop** an
 ## Layout
 
 - **`init/`** — provisioning. `init.sh` is the bash bootstrap (bash because a fresh box has no zsh yet); everything else is zsh step scripts (see below).
-- **`config/`** — files that land in the home directory, laid out by where they go: `zsh/` (`.zshrc`, `.zsh_plugins.txt`, `env/*.zsh` → `~/.zshrc`, `~/.zsh_plugins.txt`, `~/env`), `i3/` (→ `~/.config/i3`), `kitty/kitty.conf`, `.xprofile`, `pacman.conf` (→ `/etc/pacman.conf`), `packages.txt` (shared package list), `spotify-mcp/spotify-config.sample.json`, `wallpapers/` (→ `~/pics/wallpapers`, the images `bin/wallpaper` paints on the root window).
+- **`config/`** — files that land in the home directory, laid out by where they go: `zsh/` (`.zshrc`, `.zsh_plugins.txt`, `env/*.zsh` → `~/.zshrc`, `~/.zsh_plugins.txt`, `~/env`), `i3/` (→ `~/.config/i3`), `kitty/kitty.conf`, `ssh/config` (→ `~/.ssh/config`, host aliases only; never keys or `known_hosts`), `.xprofile`, `pacman.conf` (→ `/etc/pacman.conf`), `packages.txt` (shared package list), `spotify-mcp/spotify-config.sample.json`, `wallpapers/` (→ `~/pics/wallpapers`, the images `bin/wallpaper` paints on the root window).
 - **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `xprofile.sh` (role-only X-session startup, a POSIX sh fragment sourced by `config/.xprofile`; the desktop one is where the headless Obsidian / Xvfb startup belongs and is a marked placeholder until it is pasted in), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `bin/` with the headless Obsidian / Claude remote-control helpers).
 - **`bin/`** — scripts for both machines; `config/zsh/env/path.zsh` puts it (`~/src/env/bin`) on `PATH`. It is never linked to `~/bin`, which stays the user's own hand-written-scripts directory (also on `PATH` when present). `claude-hook-node` is the launcher for the `node` hooks in `claude/settings.json` (`zsh $HOME/src/env/bin/claude-hook-node <hook.js>`): it loads node from nvm when Claude Code was started without an interactive zsh (ulauncher, a .desktop entry, a systemd user unit), where PATH has no node.
 - **`git/`** — git helper scripts + the gitconfig include that exposes them.
@@ -38,12 +38,12 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 
 `init/init.sh [--desktop|--laptop] [--links-only]` installs zsh and execs `init/init.zsh` with `MACHINE_ROLE` set. `init.zsh` sources each step **in its own subshell** by absolute path off `ENV_DIR`, so a failing step (or a stray `exit`) is reported and init continues; it prints a summary of failed steps at the end. Every step is safe to re-run. Order:
 
-1. `fs.zsh` — `~/src`, `~/.config`, `~/docs/obsidian_vaults` (never the vault itself)
+1. `fs.zsh` — `~/src`, `~/.config`, `~/.ssh` (0700), `~/docs/obsidian_vaults` (never the vault itself)
 2. `role.zsh` — link `~/.config/machine-role.env`
 3. `pacman.zsh` — link `pacman.conf`, install git, bootstrap yay (`yay.zsh`), `yay -Syu`, install `config/packages.txt` + `machines/<role>/packages.txt`. Interactive on purpose (no `--noconfirm`): the desktop gaming packages raise provider prompts (`lib32-vulkan-driver`) where the default pick is AMD, not NVIDIA
 4. `gh-login.zsh` — `gh auth status`; only when logged out, `gh auth login --git-protocol ssh --web` (device code, works from a text console; offers to generate and upload an ssh key), then init continues on its own
 5. `antidote.zsh`, `node.zsh` — antidote clone; latest node via the `nvm` package
-6. `links.zsh` — zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.xprofile` (never `~/bin`); returns non-zero if any link failed
+6. `links.zsh` — zsh files, `~/env`, `~/.config/i3` (whole directory), kitty, `~/.ssh/config` (file only), `~/.xprofile` (never `~/bin`); returns non-zero if any link failed
 7. `claude.zsh` — link `CLAUDE.md`, `settings.json` and every `claude/user-skills/*` dir; copy `config.sample.json` → `~/.claude/config.json` only if missing (never overwritten; prints a reminder to paste the Obsidian key). The local plugin marketplaces stay as the committed `~/src/<name>` directory sources in `settings.json`: Claude Code expands `~` itself when it registers them in `~/.claude/plugins/known_marketplaces.json`, so init never rewrites the tracked file (it used to, with a username-specific absolute path)
 8. `marketplaces.zsh` — `gh repo clone` the local plugin marketplaces into `~/src` (skip if present)
 9. `git.zsh` — add `git/gitconfig` to the global `include.path` once

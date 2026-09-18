@@ -31,6 +31,13 @@ link_path "$ENV_DIR/config/i3" "$HOME/.config/i3" || rc=1
 # kitty terminal config (font, etc).
 link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" || rc=1
 
+# ssh client config: host aliases only (e.g. `ssh tradical@deepthought`). A
+# file link, never the whole ~/.ssh directory -- keys, known_hosts and agent
+# sockets are per-machine and must not end up in the repo. ~/.ssh itself is
+# created 0700 by init/fs.zsh before this runs; ssh follows the link and only
+# requires the target not be group/world-writable, which the repo's 644 isn't.
+link_path "$ENV_DIR/config/ssh/config" "$HOME/.ssh/config" || rc=1
+
 # flameshot. The setting that matters is useX11LegacyScreenshot=true.
 #
 # Flameshot 14 captures through the xdg-desktop-portal Screenshot interface by
