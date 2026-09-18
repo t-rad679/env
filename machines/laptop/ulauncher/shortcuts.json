@@ -1,0 +1,42 @@
+{
+    "b72e8ee9-aa94-4bd0-b9b2-11322cca5801": {
+        "id": "b72e8ee9-aa94-4bd0-b9b2-11322cca5801",
+        "name": "Google Search",
+        "keyword": "g",
+        "cmd": "https://google.com/search?q=%s",
+        "icon": "/usr/share/ulauncher/media/google-search-icon.png",
+        "is_default_search": true,
+        "run_without_argument": false,
+        "added": 1789506420.8741527
+    },
+    "52007656-d3e7-483e-ba96-8ee8ce63237a": {
+        "id": "52007656-d3e7-483e-ba96-8ee8ce63237a",
+        "name": "Stack Overflow",
+        "keyword": "so",
+        "cmd": "https://stackoverflow.com/search?q=%s",
+        "icon": "/usr/share/ulauncher/media/stackoverflow-icon.svg",
+        "is_default_search": true,
+        "run_without_argument": false,
+        "added": 1789506420.8741703
+    },
+    "e004d194-c3af-43f2-8adf-6d3bf4d6c0a7": {
+        "id": "e004d194-c3af-43f2-8adf-6d3bf4d6c0a7",
+        "name": "Wikipedia",
+        "keyword": "wiki",
+        "cmd": "https://en.wikipedia.org/wiki/%s",
+        "icon": "/usr/share/ulauncher/media/wikipedia-icon.png",
+        "is_default_search": true,
+        "run_without_argument": false,
+        "added": 1789506420.8741786
+    },
+    "b5731783-4ffb-4db0-b3c0-58a53551ff2a": {
+        "id": "b5731783-4ffb-4db0-b3c0-58a53551ff2a",
+        "name": "The Grimoire",
+        "keyword": "grimoire",
+        "cmd": "$HOME/src/env/machines/laptop/bin/obsidian-grimoire",
+        "icon": "/usr/share/icons/hicolor/512x512/apps/obsidian.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1789746382.1886265
+    }
+}

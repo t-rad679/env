@@ -82,6 +82,24 @@ if [[ -d "$ENV_DIR/machines/$MACHINE_ROLE/wireplumber" ]]; then
     link_path "$ENV_DIR/machines/$MACHINE_ROLE/wireplumber" "$HOME/.config/wireplumber" || rc=1
 fi
 
+# Ulauncher shortcuts (keyword -> command/URL entries), per role. Only the
+# laptop ships a set -- its "The Grimoire" entry runs a laptop-only script --
+# so the link is skipped when the role has no file, leaving that machine's own
+# shortcuts.json alone.
+#
+# A file link, not the whole ~/.config/ulauncher directory: settings.json and
+# extensions.json are not tracked. A file link is safe here (unlike
+# flameshot's above) because Ulauncher 5 saves shortcuts.json with a plain
+# open(path, 'w'), which writes through the symlink rather than replacing it.
+#
+# Commands in the file use $HOME rather than a literal home path, since the
+# two machines have different usernames. That works because Ulauncher writes
+# each command into a temporary shell script and runs it, so the shell expands
+# it. Ulauncher only reads the file at startup, so restart it after an edit.
+if [[ -f "$ENV_DIR/machines/$MACHINE_ROLE/ulauncher/shortcuts.json" ]]; then
+    link_path "$ENV_DIR/machines/$MACHINE_ROLE/ulauncher/shortcuts.json" "$HOME/.config/ulauncher/shortcuts.json" || rc=1
+fi
+
 # ~/.xprofile: sourced by LightDM before i3 starts; exports MACHINE_ROLE into
 # the X session and sources machines/<role>/xprofile.sh. (POSIX sh, not zsh,
 # because LightDM runs it with sh.) A hand-maintained real ~/.xprofile (the
