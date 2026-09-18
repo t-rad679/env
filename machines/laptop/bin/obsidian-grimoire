@@ -1,0 +1,101 @@
+#!/usr/bin/zsh
+
+# The Grimoire: one dedicated Obsidian window on the grimoire vault, living on
+# workspace 4 (which laptop.conf pins to the Samsung).
+#
+# Usage: obsidian-grimoire [--no-focus]
+#
+#   Starts the Grimoire instance if it is not running, then focuses it (which
+#   switches to ws4). If it is already running, just focuses it. --no-focus is
+#   for the login autostart, so starting it does not pull you off ws1.
+#
+# Why a script instead of an i3 `assign`: Obsidian's window class is always
+# md.obsidian.Obsidian -- it ignores --class, --name and CHROME_DESKTOP
+# (tested on 1.13.7 / electron43) -- so a class rule would drag EVERY Obsidian
+# window to ws4. Instead this runs Obsidian with its own Electron profile
+# (--user-data-dir), which makes it a separate process from any normal
+# `obsidian` launch, finds the window that process owns via _NET_WM_PID, and
+# tags it with the i3 mark "grimoire". Every other Obsidian window opens
+# wherever you are, as usual.
+#
+# The profile is separate, the vault is not: plugins, themes and settings live
+# in the vault's .obsidian/, so they are shared with any other instance that
+# opens the grimoire. Only app-level state (window size, the vault list) is
+# per-profile.
+
+set -u
+
+local -r PROFILE="$HOME/.config/obsidian-grimoire"
+local -r VAULT="$HOME/docs/obsidian_vaults/grimoire"
+local -r MARK="grimoire"
+local -r WS="4"
+# Electron can take a while on a cold login; give it 30s to map a window.
+local -ri TRIES=60
+
+local focus=1
+if [[ "${1:-}" == "--no-focus" ]]; then
+    focus=0
+fi
+
+focus_grimoire() {
+    (( focus )) && i3-msg -q "[con_mark=\"^${MARK}\$\"] focus"
+    return 0
+}
+
+# Already up and marked: nothing to launch.
+if [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$MARK" \
+        '.. | objects | select((.marks // []) | index($m)) | .id')" ]]; then
+    focus_grimoire
+    exit 0
+fi
+
+# First run: register the vault in the new profile and mark it open, so
+# Obsidian opens straight into it instead of showing the vault picker. The
+# vault id is just a per-profile key; any 16 hex digits will do.
+if [[ ! -e "$PROFILE/obsidian.json" ]]; then
+    mkdir -p "$PROFILE"
+    local vault_id="${$(print -rn -- "$VAULT" | md5sum)[1,16]}"
+    jq -n --arg id "$vault_id" --arg path "$VAULT" \
+        --argjson ts "$(date +%s%3N)" \
+        '{vaults: {($id): {path: $path, ts: $ts, open: true}}}' \
+        > "$PROFILE/obsidian.json"
+fi
+
+# setsid so the app survives whatever launched this (a launcher, a terminal,
+# i3's exec) -- same reasoning as machines/laptop/bin/chat-grid. If the
+# profile is already running (but its window lost the mark, e.g. after an i3
+# crash), this launch hands off to the running instance and exits; the lookup
+# below finds the running one either way.
+setsid -f obsidian --user-data-dir="$PROFILE" >/dev/null 2>&1
+
+# Electron's SingletonLock is a symlink to "<hostname>-<pid>" of the main
+# process, which is the PID its windows advertise in _NET_WM_PID. Reading it
+# (rather than $!) works both for a fresh launch and for the hand-off case.
+local -i i
+local pid="" win="" w
+for (( i = 0; i < TRIES; i++ )); do
+    pid="$(readlink "$PROFILE/SingletonLock" 2>/dev/null)"
+    pid="${pid##*-}"
+    if [[ -n "$pid" ]]; then
+        for w in $(i3-msg -t get_tree | jq -r \
+                '.. | objects | select(.window != null
+                    and .window_properties.class == "md.obsidian.Obsidian")
+                  | .window'); do
+            if [[ "$(xprop -id "$w" _NET_WM_PID 2>/dev/null)" == *" = $pid" ]]; then
+                win="$w"
+                break 2
+            fi
+        done
+    fi
+    sleep 0.5
+done
+
+if [[ -z "$win" ]]; then
+    print -u2 "${0:t}: no Grimoire window appeared within $(( TRIES / 2 ))s"
+    exit 1
+fi
+
+# Moving to a workspace that does not exist yet creates it, and i3 creates it
+# on its assigned output -- so this lands on the Samsung when docked.
+i3-msg -q "[id=$win] mark --add $MARK, move container to workspace number $WS" || exit 1
+focus_grimoire
