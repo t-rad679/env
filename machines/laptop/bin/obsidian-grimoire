@@ -1,13 +1,14 @@
 #!/usr/bin/zsh
 
 # The Grimoire: one dedicated Obsidian window on the grimoire vault, living on
-# workspace 4 (which laptop.conf pins to the Samsung).
+# workspace 4 (which laptop.conf pins to the Samsung), with a kitty terminal
+# in the vault directly to its right, split at the golden ratio.
 #
 # Usage: obsidian-grimoire [--no-focus]
 #
-#   Starts the Grimoire instance if it is not running, then focuses it (which
-#   switches to ws4). If it is already running, just focuses it. --no-focus is
-#   for the login autostart, so starting it does not pull you off ws1.
+#   Starts whichever of the two windows is missing, then focuses the Grimoire
+#   (which switches to ws4). If both are already up, it only focuses. --no-focus
+#   is for the login autostart, so starting them does not pull you off ws1.
 #
 # Why a script instead of an i3 `assign`: Obsidian's window class is always
 # md.obsidian.Obsidian -- it ignores --class, --name and CHROME_DESKTOP
@@ -16,7 +17,8 @@
 # (--user-data-dir), which makes it a separate process from any normal
 # `obsidian` launch, finds the window that process owns via _NET_WM_PID, and
 # tags it with the i3 mark "grimoire". Every other Obsidian window opens
-# wherever you are, as usual.
+# wherever you are, as usual. The terminal has no such problem (kitty honours
+# --class), but it is placed relative to the Grimoire, so it lives here too.
 #
 # The profile is separate, the vault is not: plugins, themes and settings live
 # in the vault's .obsidian/, so they are shared with any other instance that
@@ -29,6 +31,12 @@ local -r PROFILE="$HOME/.config/obsidian-grimoire"
 local -r VAULT="$HOME/docs/obsidian_vaults/grimoire"
 local -r MARK="grimoire"
 local -r WS="4"
+local -r TERM_CLASS="grimoire-term"
+local -r TERM_MARK="grimoire-term"
+# The terminal's share of the split: golden ratio 1.618:1 is 38.2/61.8, and
+# i3's ppt is whole percent -- the same rounding as the $mod+r `g` binding in
+# config/i3/conf.d/baseconfig.conf.
+local -r TERM_PPT="38"
 # Electron can take a while on a cold login; give it 30s to map a window.
 local -ri TRIES=60
 
@@ -37,65 +45,106 @@ if [[ "${1:-}" == "--no-focus" ]]; then
     focus=0
 fi
 
-focus_grimoire() {
-    (( focus )) && i3-msg -q "[con_mark=\"^${MARK}\$\"] focus"
-    return 0
+has_mark() {
+    [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$1" \
+        '.. | objects | select((.marks // []) | index($m)) | .id')" ]]
 }
 
-# Already up and marked: nothing to launch.
-if [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$MARK" \
-        '.. | objects | select((.marks // []) | index($m)) | .id')" ]]; then
-    focus_grimoire
-    exit 0
-fi
-
-# First run: register the vault in the new profile and mark it open, so
-# Obsidian opens straight into it instead of showing the vault picker. The
-# vault id is just a per-profile key; any 16 hex digits will do.
-if [[ ! -e "$PROFILE/obsidian.json" ]]; then
-    mkdir -p "$PROFILE"
-    local vault_id="${$(print -rn -- "$VAULT" | md5sum)[1,16]}"
-    jq -n --arg id "$vault_id" --arg path "$VAULT" \
-        --argjson ts "$(date +%s%3N)" \
-        '{vaults: {($id): {path: $path, ts: $ts, open: true}}}' \
-        > "$PROFILE/obsidian.json"
-fi
-
-# setsid so the app survives whatever launched this (a launcher, a terminal,
-# i3's exec) -- same reasoning as machines/laptop/bin/chat-grid. If the
-# profile is already running (but its window lost the mark, e.g. after an i3
-# crash), this launch hands off to the running instance and exits; the lookup
-# below finds the running one either way.
-setsid -f obsidian --user-data-dir="$PROFILE" >/dev/null 2>&1
-
-# Electron's SingletonLock is a symlink to "<hostname>-<pid>" of the main
-# process, which is the PID its windows advertise in _NET_WM_PID. Reading it
-# (rather than $!) works both for a fresh launch and for the hand-off case.
-local -i i
-local pid="" win="" w
-for (( i = 0; i < TRIES; i++ )); do
-    pid="$(readlink "$PROFILE/SingletonLock" 2>/dev/null)"
-    pid="${pid##*-}"
-    if [[ -n "$pid" ]]; then
-        for w in $(i3-msg -t get_tree | jq -r \
-                '.. | objects | select(.window != null
-                    and .window_properties.class == "md.obsidian.Obsidian")
-                  | .window'); do
-            if [[ "$(xprop -id "$w" _NET_WM_PID 2>/dev/null)" == *" = $pid" ]]; then
-                win="$w"
-                break 2
-            fi
-        done
+start_grimoire() {
+    # First run: register the vault in the new profile and mark it open, so
+    # Obsidian opens straight into it instead of showing the vault picker. The
+    # vault id is just a per-profile key; any 16 hex digits will do.
+    if [[ ! -e "$PROFILE/obsidian.json" ]]; then
+        mkdir -p "$PROFILE"
+        local vault_id="${$(print -rn -- "$VAULT" | md5sum)[1,16]}"
+        jq -n --arg id "$vault_id" --arg path "$VAULT" \
+            --argjson ts "$(date +%s%3N)" \
+            '{vaults: {($id): {path: $path, ts: $ts, open: true}}}' \
+            > "$PROFILE/obsidian.json"
     fi
-    sleep 0.5
-done
 
-if [[ -z "$win" ]]; then
-    print -u2 "${0:t}: no Grimoire window appeared within $(( TRIES / 2 ))s"
-    exit 1
+    # setsid so the app survives whatever launched this (a launcher, a
+    # terminal, i3's exec) -- same reasoning as machines/laptop/bin/chat-grid.
+    # If the profile is already running (but its window lost the mark, e.g.
+    # after an i3 crash), this launch hands off to the running instance and
+    # exits; the lookup below finds the running one either way.
+    setsid -f obsidian --user-data-dir="$PROFILE" >/dev/null 2>&1
+
+    # Electron's SingletonLock is a symlink to "<hostname>-<pid>" of the main
+    # process, which is the PID its windows advertise in _NET_WM_PID. Reading
+    # it (rather than $!) works both for a fresh launch and for the hand-off.
+    local -i i
+    local pid="" win="" w
+    for (( i = 0; i < TRIES; i++ )); do
+        pid="$(readlink "$PROFILE/SingletonLock" 2>/dev/null)"
+        pid="${pid##*-}"
+        if [[ -n "$pid" ]]; then
+            for w in $(i3-msg -t get_tree | jq -r \
+                    '.. | objects | select(.window != null
+                        and .window_properties.class == "md.obsidian.Obsidian")
+                      | .window'); do
+                if [[ "$(xprop -id "$w" _NET_WM_PID 2>/dev/null)" == *" = $pid" ]]; then
+                    win="$w"
+                    break 2
+                fi
+            done
+        fi
+        sleep 0.5
+    done
+
+    if [[ -z "$win" ]]; then
+        print -u2 "${0:t}: no Grimoire window appeared within $(( TRIES / 2 ))s"
+        return 1
+    fi
+
+    # Moving to a workspace that does not exist yet creates it, and i3 creates
+    # it on its assigned output -- so this lands on the Samsung when docked.
+    i3-msg -q "[id=$win] mark --add $MARK, move container to workspace number $WS"
+}
+
+start_term() {
+    setsid -f kitty --class "$TERM_CLASS" --directory "$VAULT" >/dev/null 2>&1
+
+    local -i i
+    local win=""
+    for (( i = 0; i < TRIES; i++ )); do
+        win="$(i3-msg -t get_tree | jq -r --arg c "$TERM_CLASS" \
+            'first(.. | objects | select(.window != null
+                and .window_properties.class == $c) | .window) // empty')"
+        [[ -n "$win" ]] && break
+        sleep 0.5
+    done
+
+    if [[ -z "$win" ]]; then
+        print -u2 "${0:t}: no $TERM_CLASS window appeared within $(( TRIES / 2 ))s"
+        return 1
+    fi
+
+    i3-msg -q "[id=$win] mark --add $TERM_MARK"
+}
+
+# Only arrange when something was just started: re-running this to jump to the
+# Grimoire must not undo a split you have since resized by hand.
+local -i started=0
+if ! has_mark "$MARK"; then
+    start_grimoire || exit 1
+    started=1
+fi
+if ! has_mark "$TERM_MARK"; then
+    start_term || exit 1
+    started=1
 fi
 
-# Moving to a workspace that does not exist yet creates it, and i3 creates it
-# on its assigned output -- so this lands on the Samsung when docked.
-i3-msg -q "[id=$win] mark --add $MARK, move container to workspace number $WS" || exit 1
-focus_grimoire
+if (( started )); then
+    # `move container to mark` puts the terminal right after the Grimoire in
+    # the Grimoire's split -- to its right, since ws4 on a landscape output
+    # splits horizontally. The resize then sets the terminal against its
+    # sibling, which is exactly the golden ratio only when the two of them are
+    # the whole split (as at login); a third window in that split gets a share
+    # of the remainder.
+    i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $MARK, resize set width $TERM_PPT ppt" || exit 1
+fi
+
+if (( focus )); then
+    i3-msg -q "[con_mark=\"^${MARK}\$\"] focus"
+fi
