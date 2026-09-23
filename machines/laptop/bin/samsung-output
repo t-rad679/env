@@ -1,26 +1,32 @@
 #!/usr/bin/zsh
 
-# Pin workspace 4 to the Samsung 4K monitor on the dock.
+# Pin the workspaces that belong on the Samsung 4K monitor to it: workspace 2
+# (Personal Chrome) and workspace 4 (The Grimoire).
 #
-# Usage: ws4-output        (no arguments; safe to run at any time)
+# Usage: samsung-output        (no arguments; safe to run at any time)
 #
 # The connector name is resolved from the monitor's EDID at run time, for the
 # same reason as ws3-output: this laptop's DisplayPort connector numbers swap
 # between boots, so `workspace 4 output DisplayPort-7` in the config would be
 # wrong about half the time.
 #
-# Unlike ws3-output, this pins the workspace from the moment it is CREATED,
+# Unlike ws3-output, this pins each workspace from the moment it is CREATED,
 # not only when it already exists. It does that in two parts:
 #
-#   1. Publish the connector as the X resource i3wm.ws4_output. The i3 config
-#      (machines/laptop/i3/laptop.conf) reads it with set_from_resource into
-#      an ordinary `workspace 4 output` rule, so $mod+4 opens ws4 on the
-#      Samsung even if it did not exist yet. When the Samsung is absent the
-#      resource is set to a name no output has, which makes i3 ignore the rule
-#      and open ws4 wherever it would anyway.
-#   2. If i3 is running and the connector changed, reload i3 so it re-reads
-#      the resource, then move ws4 if it already exists. The rule from step 1
-#      only applies to workspaces created after the reload.
+#   1. Publish the connector as the X resource i3wm.samsung_output. The i3
+#      config (machines/laptop/i3/laptop.conf) reads it with set_from_resource
+#      into ordinary `workspace N output` rules, so $mod+2 and $mod+4 open on
+#      the Samsung even if those workspaces did not exist yet. When the Samsung
+#      is absent the resource is set to a name no output has, which makes i3
+#      ignore the rules and open the workspaces wherever it would anyway.
+#   2. If i3 is running and the connector changed, reload i3 so it re-reads the
+#      resource, then move any of the workspaces that already exist. The rules
+#      from step 1 only apply to workspaces created after the reload.
+#
+# One script and one resource for the whole monitor, rather than one per
+# workspace: the EDID lookup, the reload and the focus dance are identical for
+# every workspace that lives here, and doing it once means one xrdb write and
+# one i3 reload per dock event instead of one each.
 #
 # Called from two places:
 #   * machines/laptop/xprofile.sh, after the login `autorandr --change`,
@@ -35,8 +41,10 @@ set -u
 # EDID model name of the dock's Samsung 32" 4K (the string the panel reports
 # in `autorandr --fingerprint`, not the marketing name).
 local -r MONITOR_MODEL="LS32A70"
-local -r WS="4"
-local -r RESOURCE="i3wm.ws4_output"
+# Every workspace pinned to this monitor. Keep in sync with the
+# `workspace N output` rules in laptop.conf.
+local -ra WORKSPACES=(2 4)
+local -r RESOURCE="i3wm.samsung_output"
 # Deliberately not a real connector name: i3 ignores a `workspace N output`
 # rule whose output does not exist. Keep in sync with the fallback in
 # laptop.conf.
@@ -88,23 +96,35 @@ fi
 local workspaces
 workspaces="$(i3-msg -t get_workspaces)" || exit 1
 
-# Nothing to move if the workspace has never been opened; the config rule
-# covers it from here on.
-local ws_output
-ws_output="$(print -r -- "$workspaces" | jq -r --arg ws "$WS" \
-    '.[] | select(.name == $ws) | .output')"
-if [[ -z "$ws_output" || "$ws_output" == "$connector" ]]; then
+# Which of ours exist and are on the wrong output. A workspace that has never
+# been opened needs nothing; the config rules cover it from here on.
+local ws ws_output
+local -a stray=()
+for ws in "${WORKSPACES[@]}"; do
+    ws_output="$(print -r -- "$workspaces" | jq -r --arg ws "$ws" \
+        '.[] | select(.name == $ws) | .output')"
+    if [[ -n "$ws_output" && "$ws_output" != "$connector" ]]; then
+        stray+=("$ws")
+    fi
+done
+
+if (( ${#stray} == 0 )); then
     exit 0
 fi
 
 # `move workspace to output` acts on the focused workspace, so focus has to go
-# to ws4 and come back. --no-auto-back-and-forth keeps this from clobbering the
-# back-and-forth target.
+# to each stray workspace and then come back. --no-auto-back-and-forth keeps
+# this from clobbering the back-and-forth target.
 local previous
 previous="$(print -r -- "$workspaces" | jq -r '.[] | select(.focused) | .name')"
 
-i3-msg -q "workspace --no-auto-back-and-forth $WS; move workspace to output $connector" || exit 1
+for ws in "${stray[@]}"; do
+    i3-msg -q "workspace --no-auto-back-and-forth $ws; move workspace to output $connector" || exit 1
+done
 
-if [[ -n "$previous" && "$previous" != "$WS" ]]; then
+# Unconditional: the loop above leaves focus on the LAST stray workspace, which
+# is not necessarily where it started even when the starting workspace was one
+# of the strays. Switching to the workspace already focused is a no-op.
+if [[ -n "$previous" ]]; then
     i3-msg -q "workspace --no-auto-back-and-forth $previous"
 fi

@@ -1,0 +1,140 @@
+#!/usr/bin/zsh
+
+# Personal Chrome: one dedicated Chrome window on its own browser profile,
+# living on workspace 2 (which laptop.conf pins to the Samsung), with a kitty
+# terminal directly to its right, split at the golden ratio.
+#
+# Usage: personal-chrome [--no-focus]
+#
+#   Starts whichever of the two windows is missing, then focuses Chrome (which
+#   switches to ws2). If both are already up, it only focuses. --no-focus is
+#   for the login autostart, so starting them does not pull you off ws1.
+#
+# Why a separate --user-data-dir rather than --profile-directory: Chrome's
+# singleton is per user-data-dir, so a second profile inside the normal
+# ~/.config/google-chrome would be served by the ALREADY RUNNING browser
+# process. That has two consequences this setup cannot live with -- the
+# hand-off ignores --class, so both windows would report the same WM_CLASS and
+# i3 could not tell them apart, and an ordinary Chrome launch could be routed
+# into this window instead of opening its own. A separate user-data-dir is a
+# separate process and a separate singleton, so neither can happen.
+#
+# Unlike Obsidian (see machines/laptop/bin/obsidian-grimoire, which has to hunt
+# for its window by _NET_WM_PID), Chrome does honour --class: the window comes
+# up with WM_CLASS class "personal-chrome", which is what the assign rules in
+# i3/autostart.conf match on. It ignores --name, so the INSTANCE is left as
+# Chrome's own "google-chrome (<user-data-dir>)" -- match on class, never
+# instance.
+#
+# The profile is separate in every sense: its own logins, bookmarks, history
+# and extensions. Nothing is shared with the everyday Chrome profile.
+
+set -u
+
+local -r PROFILE="$HOME/.config/chrome-personal"
+local -r CLASS="personal-chrome"
+local -r MARK="personal-chrome"
+local -r WS="2"
+local -r TERM_CLASS="personal-chrome-term"
+local -r TERM_MARK="personal-chrome-term"
+local -r TERM_DIR="$HOME"
+# The terminal's share of the split: golden ratio 1.618:1 is 38.2/61.8, and
+# i3's ppt is whole percent -- the same rounding as the $mod+r `g` binding in
+# config/i3/conf.d/baseconfig.conf and as obsidian-grimoire.
+local -r TERM_PPT="38"
+# The Arch package installs the binary as google-chrome-stable; plain
+# `google-chrome` only exists inside /opt/google/chrome.
+local -r CHROME="google-chrome-stable"
+# Chrome can be slow on a cold login; give each window 30s to map.
+local -ri TRIES=60
+
+local focus=1
+if [[ "${1:-}" == "--no-focus" ]]; then
+    focus=0
+fi
+
+has_mark() {
+    [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$1" \
+        '.. | objects | select((.marks // []) | index($m)) | .id')" ]]
+}
+
+# Wait for a window of class $1, then mark it $2 and move it to ws2. Same
+# shape as the helpers in obsidian-grimoire and ws1-spotify-claude.
+adopt_window() {
+    local class="$1" mark="$2"
+    local -i i
+    local win=""
+    for (( i = 0; i < TRIES; i++ )); do
+        win="$(i3-msg -t get_tree | jq -r --arg c "$class" \
+            'first(.. | objects | select(.window != null
+                and .window_properties.class == $c) | .window) // empty')"
+        [[ -n "$win" ]] && break
+        sleep 0.5
+    done
+
+    if [[ -z "$win" ]]; then
+        print -u2 "${0:t}: no $class window appeared within $(( TRIES / 2 ))s"
+        return 1
+    fi
+
+    # Moving to a workspace that does not exist yet creates it, and i3 creates
+    # it on its assigned output -- so this lands on the Samsung when docked.
+    i3-msg -q "[id=$win] mark --add $mark, move container to workspace number $WS"
+}
+
+start_chrome() {
+    # First run: ask the profile to reopen the tabs it had last time, so this
+    # window comes back as you left it instead of on a new tab page.
+    # restore_on_startup 1 is "continue where you left off"; Chrome merges this
+    # seed with the defaults it writes for everything else. The parallel to
+    # obsidian-grimoire seeding obsidian.json for its Electron profile.
+    if [[ ! -e "$PROFILE/Default/Preferences" ]]; then
+        mkdir -p "$PROFILE/Default"
+        jq -n '{session: {restore_on_startup: 1}}' > "$PROFILE/Default/Preferences"
+    fi
+
+    # setsid so the browser survives whatever launched this (a launcher, a
+    # terminal, i3's exec) -- same reasoning as machines/laptop/bin/chat-grid.
+    # If this profile is already running (but its window lost the mark, e.g.
+    # after an i3 crash), the launch hands off to the running instance and
+    # exits; adopt_window finds the running window either way.
+    #
+    # --no-first-run skips the welcome flow a brand new profile would show, and
+    # --no-default-browser-check stops it asking to become the default browser
+    # -- it is a second browser, not a replacement.
+    setsid -f "$CHROME" --user-data-dir="$PROFILE" --class="$CLASS" \
+        --no-first-run --no-default-browser-check >/dev/null 2>&1
+
+    adopt_window "$CLASS" "$MARK"
+}
+
+start_term() {
+    setsid -f kitty --class "$TERM_CLASS" --directory "$TERM_DIR" >/dev/null 2>&1
+    adopt_window "$TERM_CLASS" "$TERM_MARK"
+}
+
+# Only arrange when something was just started: re-running this to jump to
+# Personal Chrome must not undo a split you have since resized by hand.
+local -i started=0
+if ! has_mark "$MARK"; then
+    start_chrome || exit 1
+    started=1
+fi
+if ! has_mark "$TERM_MARK"; then
+    start_term || exit 1
+    started=1
+fi
+
+if (( started )); then
+    # `move container to mark` puts the terminal right after Chrome in Chrome's
+    # split -- to its right, since ws2 on a landscape output splits
+    # horizontally. The resize then sets the terminal against its sibling,
+    # which is exactly the golden ratio only when the two of them are the whole
+    # split (as at login); a third window in that split gets a share of the
+    # remainder.
+    i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $MARK, resize set width $TERM_PPT ppt" || exit 1
+fi
+
+if (( focus )); then
+    i3-msg -q "[con_mark=\"^${MARK}\$\"] focus"
+fi
