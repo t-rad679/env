@@ -1,0 +1,126 @@
+#!/usr/bin/zsh
+
+# Workspace 1 on the laptop: Spotify on the left and a dedicated Claude Code
+# kitty (class and mark "ws1-claude") directly to its right. laptop.conf pins
+# ws1 to the built-in panel (eDP).
+#
+# Usage: ws1-spotify-claude [--no-focus]
+#
+#   Starts whichever of the two windows is missing, then focuses the Claude
+#   window (which switches to ws1). If both are already up, it only focuses.
+#   --no-focus is for the login autostart.
+#
+# Why a script instead of i3 `assign`s: the Claude window is placed relative
+# to Spotify, not just onto the workspace. Spotify also sets WM_CLASS only
+# after it maps its window, so an `assign` on class "Spotify" can miss it. The
+# script waits for the window by class and marks it "spotify" instead. Same
+# shape as machines/laptop/bin/obsidian-grimoire.
+#
+# The Claude kitty is its own instance, separate from the shared `general`
+# kitty (config/i3/conf.d/autostart.conf). It runs Claude Code through
+# bin/claude-env inside an interactive zsh, so it has the same PATH and
+# secrets as a hand-started session. When Claude exits it drops to a shell
+# instead of closing the window.
+
+set -u
+
+local -r WS="1"
+local -r SPOTIFY_CLASS="Spotify"
+local -r SPOTIFY_MARK="spotify"
+local -r CLAUDE_CLASS="ws1-claude"
+local -r CLAUDE_MARK="ws1-claude"
+# Claude starts in the grimoire vault. Spelled out rather than using
+# $GRIMOIRE_DIR (config/zsh/env/globalvars.zsh): i3 inherits the X session's
+# environment, which never sourced the zsh env scripts, and kitty resolves
+# --directory itself before the interactive zsh starts.
+local -r CLAUDE_DIR="$HOME/docs/obsidian_vaults/grimoire"
+local -r CLAUDE_ENV="$HOME/src/env/bin/claude-env"
+# Spotify can be slow on a cold login; give each window 30s to map.
+local -ri TRIES=60
+
+local focus=1
+if [[ "${1:-}" == "--no-focus" ]]; then
+    focus=0
+fi
+
+has_mark() {
+    [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$1" \
+        '.. | objects | select((.marks // []) | index($m)) | .id')" ]]
+}
+
+# Wait for a window of class $1 that doesn't have a mark yet, then mark it $2
+# and move it to ws1. Unmarked only, so an already marked window is never
+# picked up a second time.
+adopt_window() {
+    local class="$1" mark="$2"
+    local -i i
+    local win=""
+    for (( i = 0; i < TRIES; i++ )); do
+        win="$(i3-msg -t get_tree | jq -r --arg c "$class" \
+            'first(.. | objects | select(.window != null
+                and .window_properties.class == $c
+                and ((.marks // []) | length) == 0) | .window) // empty')"
+        [[ -n "$win" ]] && break
+        sleep 0.5
+    done
+
+    if [[ -z "$win" ]]; then
+        print -u2 "${0:t}: no $class window appeared within $(( TRIES / 2 ))s"
+        return 1
+    fi
+
+    # Moving to a workspace that does not exist yet creates it, and i3 creates
+    # it on its assigned output (eDP, from laptop.conf).
+    i3-msg -q "[id=$win] mark --add $mark, move container to workspace number $WS"
+}
+
+start_spotify() {
+    # setsid so the app survives whatever launched this -- same reasoning as
+    # machines/laptop/bin/chat-grid. If Spotify is already running without
+    # the mark (e.g. after an i3 restart), this launch hands off to it and
+    # exits, and adopt_window finds the running window anyway.
+    setsid -f spotify >/dev/null 2>&1
+    adopt_window "$SPOTIFY_CLASS" "$SPOTIFY_MARK"
+}
+
+start_claude() {
+    setsid -f kitty --class "$CLAUDE_CLASS" --directory "$CLAUDE_DIR" \
+        zsh -ic "$CLAUDE_ENV; exec zsh -i" >/dev/null 2>&1
+    adopt_window "$CLAUDE_CLASS" "$CLAUDE_MARK"
+}
+
+# Only arrange when something was just started. Re-running this to jump to
+# ws1 must not undo a layout you changed by hand.
+local -i started=0
+if ! has_mark "$SPOTIFY_MARK"; then
+    start_spotify || exit 1
+    started=1
+fi
+if ! has_mark "$CLAUDE_MARK"; then
+    start_claude || exit 1
+    started=1
+fi
+
+if (( started )); then
+    # Spotify goes first on ws1. Other windows can already be there (the
+    # shared `general` kitty is assigned to ws1 too), so if Spotify is not
+    # the workspace's first child, swap it with whatever is.
+    local first spotify_id
+    first="$(i3-msg -t get_tree | jq -r --arg ws "$WS" \
+        'first(.. | objects | select(.type == "workspace" and .name == $ws))
+         | .nodes[0].id // empty')"
+    spotify_id="$(i3-msg -t get_tree | jq -r --arg m "$SPOTIFY_MARK" \
+        'first(.. | objects | select((.marks // []) | index($m)) | .id)')"
+    if [[ -n "$first" && "$first" != "$spotify_id" ]]; then
+        i3-msg -q "[con_mark=\"^${SPOTIFY_MARK}\$\"] swap container with con_id $first" || exit 1
+    fi
+
+    # `move container to mark` puts Claude right after Spotify in Spotify's
+    # split, which is to its right because ws1 on a landscape panel splits
+    # horizontally.
+    i3-msg -q "[con_mark=\"^${CLAUDE_MARK}\$\"] move container to mark $SPOTIFY_MARK" || exit 1
+fi
+
+if (( focus )); then
+    i3-msg -q "[con_mark=\"^${CLAUDE_MARK}\$\"] focus"
+fi
