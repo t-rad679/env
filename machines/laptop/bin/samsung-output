@@ -1,7 +1,8 @@
 #!/usr/bin/zsh
 
-# Pin the workspaces that belong on the Samsung 4K monitor to it: workspace 2
-# (Personal Chrome) and workspace 4 (The Grimoire).
+# Pin the workspaces that belong on the Samsung 4K monitor to it: workspace 1
+# (WeftWorks Chrome), workspace 2 (Personal Chrome) and workspace 4 (The
+# Grimoire).
 #
 # Usage: samsung-output        (no arguments; safe to run at any time)
 #
@@ -15,7 +16,7 @@
 #
 #   1. Publish the connector as the X resource i3wm.samsung_output. The i3
 #      config (machines/laptop/i3/laptop.conf) reads it with set_from_resource
-#      into ordinary `workspace N output` rules, so $mod+2 and $mod+4 open on
+#      into ordinary `workspace N output` rules, so $mod+1, $mod+2 and $mod+4 open on
 #      the Samsung even if those workspaces did not exist yet. When the Samsung
 #      is absent the resource is set to a name no output has, which makes i3
 #      ignore the rules and open the workspaces wherever it would anyway.
@@ -43,7 +44,7 @@ set -u
 local -r MONITOR_MODEL="LS32A70"
 # Every workspace pinned to this monitor. Keep in sync with the
 # `workspace N output` rules in laptop.conf.
-local -ra WORKSPACES=(2 4)
+local -ra WORKSPACES=(1 2 4)
 local -r RESOURCE="i3wm.samsung_output"
 # Deliberately not a real connector name: i3 ignores a `workspace N output`
 # rule whose output does not exist. Keep in sync with the fallback in
