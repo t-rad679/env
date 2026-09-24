@@ -43,10 +43,20 @@
         "id": "32584916-4ef4-4650-89a8-9fbc8cf316b0",
         "name": "Personal Chrome",
         "keyword": "personal",
-        "cmd": "$HOME/src/env/machines/laptop/bin/personal-chrome",
+        "cmd": "$HOME/src/env/machines/laptop/bin/chrome-workspace personal",
         "icon": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png",
         "is_default_search": false,
         "run_without_argument": true,
         "added": 1790206011.2491164
+    },
+    "99df81fb-08d7-424d-ae8a-46947cd55442": {
+        "id": "99df81fb-08d7-424d-ae8a-46947cd55442",
+        "name": "WeftWorks Chrome",
+        "keyword": "weftworks",
+        "cmd": "$HOME/src/env/machines/laptop/bin/chrome-workspace weftworks",
+        "icon": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1790208477.958737
     }
 }

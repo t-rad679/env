@@ -1,42 +1,65 @@
 #!/usr/bin/zsh
 
-# Personal Chrome: one dedicated Chrome window on its own browser profile,
-# living on workspace 2 (which laptop.conf pins to the Samsung), with a kitty
-# terminal directly to its right, split at the golden ratio.
+# A dedicated Chrome window on its own browser profile, living on its own
+# workspace with a kitty terminal directly to its right, split at the golden
+# ratio. One script serves every such workspace; the profiles are the table in
+# the case statement below.
 #
-# Usage: personal-chrome [--no-focus]
+# Usage: chrome-workspace <profile> [--no-focus]
+#
+#   profile     personal   -- "Personal Chrome", ws2 (pinned to the Samsung)
+#               weftworks  -- "WeftWorks Chrome", ws1 (pinned to the panel)
 #
 #   Starts whichever of the two windows is missing, then focuses Chrome (which
-#   switches to ws2). If both are already up, it only focuses. --no-focus is
-#   for the login autostart, so starting them does not pull you off ws1.
+#   switches to that workspace). If both are already up, it only focuses.
+#   --no-focus is for the login autostart, so starting them does not pull you
+#   off whatever workspace you land on.
 #
-# Why a separate --user-data-dir rather than --profile-directory: Chrome's
-# singleton is per user-data-dir, so a second profile inside the normal
-# ~/.config/google-chrome would be served by the ALREADY RUNNING browser
-# process. That has two consequences this setup cannot live with -- the
-# hand-off ignores --class, so both windows would report the same WM_CLASS and
-# i3 could not tell them apart, and an ordinary Chrome launch could be routed
-# into this window instead of opening its own. A separate user-data-dir is a
-# separate process and a separate singleton, so neither can happen.
+# Why a separate --user-data-dir per profile rather than --profile-directory:
+# Chrome's singleton is per user-data-dir, so a second profile inside the
+# normal ~/.config/google-chrome would be served by the ALREADY RUNNING
+# browser process. That has two consequences this setup cannot live with --
+# the hand-off ignores --class, so the windows would all report the same
+# WM_CLASS and i3 could not tell them apart, and an ordinary Chrome launch
+# could be routed into one of these windows instead of opening its own. A
+# separate user-data-dir is a separate process and a separate singleton, so
+# neither can happen. It also means these profiles share nothing -- separate
+# logins, bookmarks, history and extensions -- which is the point of keeping
+# personal and WeftWorks apart.
 #
 # Unlike Obsidian (see machines/laptop/bin/obsidian-grimoire, which has to hunt
 # for its window by _NET_WM_PID), Chrome does honour --class: the window comes
-# up with WM_CLASS class "personal-chrome", which is what the assign rules in
+# up with the WM_CLASS class named below, which is what the assign rules in
 # i3/autostart.conf match on. It ignores --name, so the INSTANCE is left as
 # Chrome's own "google-chrome (<user-data-dir>)" -- match on class, never
 # instance.
-#
-# The profile is separate in every sense: its own logins, bookmarks, history
-# and extensions. Nothing is shared with the everyday Chrome profile.
 
 set -u
 
-local -r PROFILE="$HOME/.config/chrome-personal"
-local -r CLASS="personal-chrome"
-local -r MARK="personal-chrome"
-local -r WS="2"
-local -r TERM_CLASS="personal-chrome-term"
-local -r TERM_MARK="personal-chrome-term"
+local -r usage="usage: ${0:t} personal|weftworks [--no-focus]"
+
+local profile="${1:-}"
+case "$profile" in
+    personal)
+        local -r PROFILE="$HOME/.config/chrome-personal"
+        local -r CLASS="personal-chrome"
+        local -r WS="2"
+        ;;
+    weftworks)
+        local -r PROFILE="$HOME/.config/chrome-weftworks"
+        local -r CLASS="weftworks-chrome"
+        local -r WS="1"
+        ;;
+    *)
+        print -u2 "$usage"
+        exit 2
+        ;;
+esac
+shift
+
+local -r MARK="$CLASS"
+local -r TERM_CLASS="${CLASS}-term"
+local -r TERM_MARK="$TERM_CLASS"
 local -r TERM_DIR="$HOME"
 # The terminal's share of the split: golden ratio 1.618:1 is 38.2/61.8, and
 # i3's ppt is whole percent -- the same rounding as the $mod+r `g` binding in
@@ -51,6 +74,9 @@ local -ri TRIES=60
 local focus=1
 if [[ "${1:-}" == "--no-focus" ]]; then
     focus=0
+elif [[ -n "${1:-}" ]]; then
+    print -u2 "$usage"
+    exit 2
 fi
 
 has_mark() {
@@ -58,8 +84,8 @@ has_mark() {
         '.. | objects | select((.marks // []) | index($m)) | .id')" ]]
 }
 
-# Wait for a window of class $1, then mark it $2 and move it to ws2. Same
-# shape as the helpers in obsidian-grimoire and ws1-spotify-claude.
+# Wait for a window of class $1, then mark it $2 and move it to the workspace.
+# Same shape as the helpers in obsidian-grimoire and ws8-spotify.
 adopt_window() {
     local class="$1" mark="$2"
     local -i i
@@ -78,7 +104,8 @@ adopt_window() {
     fi
 
     # Moving to a workspace that does not exist yet creates it, and i3 creates
-    # it on its assigned output -- so this lands on the Samsung when docked.
+    # it on its assigned output (laptop.conf pins ws1 and ws8 to the panel, ws2
+    # and ws4 to the Samsung).
     i3-msg -q "[id=$win] mark --add $mark, move container to workspace number $WS"
 }
 
@@ -101,7 +128,7 @@ start_chrome() {
     #
     # --no-first-run skips the welcome flow a brand new profile would show, and
     # --no-default-browser-check stops it asking to become the default browser
-    # -- it is a second browser, not a replacement.
+    # -- these are extra browsers, not replacements.
     setsid -f "$CHROME" --user-data-dir="$PROFILE" --class="$CLASS" \
         --no-first-run --no-default-browser-check >/dev/null 2>&1
 
@@ -113,8 +140,8 @@ start_term() {
     adopt_window "$TERM_CLASS" "$TERM_MARK"
 }
 
-# Only arrange when something was just started: re-running this to jump to
-# Personal Chrome must not undo a split you have since resized by hand.
+# Only arrange when something was just started: re-running this to jump to the
+# workspace must not undo a split you have since resized by hand.
 local -i started=0
 if ! has_mark "$MARK"; then
     start_chrome || exit 1
@@ -127,8 +154,8 @@ fi
 
 if (( started )); then
     # `move container to mark` puts the terminal right after Chrome in Chrome's
-    # split -- to its right, since ws2 on a landscape output splits
-    # horizontally. The resize then sets the terminal against its sibling,
+    # split -- to its right, since these workspaces split horizontally on a
+    # landscape output. The resize then sets the terminal against its sibling,
     # which is exactly the golden ratio only when the two of them are the whole
     # split (as at login); a third window in that split gets a share of the
     # remainder.
