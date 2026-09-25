@@ -22,14 +22,22 @@
 # seconds, X re-probes on each one, i3 rebuilds its bar, and every window
 # resizes twice a second.
 #
-# --default undocked: if no profile fingerprint matches (a monitor we have
-# never saved a profile for), fall back to the laptop panel alone rather than
-# leaving the guessed layout in place.
+# --default horizontal: if no profile fingerprint matches (a monitor we have
+# never saved a profile for, or one of the pair failing to enumerate), lay the
+# connected outputs out side by side rather than leaving the guessed layout in
+# place. "horizontal" is an autorandr virtual profile, so it needs no saved
+# fingerprint.
+#
+# NOT --default undocked, which is what this used to be: "undocked" sets every
+# DisplayPort `off`, which on a connected monitor is precisely the
+# connected-but-disabled half-state described above. Falling back to it blanked
+# a working monitor and started the IRQ storm. See the same reasoning in
+# machines/laptop/systemd/autorandr.service.d/10-default-profile.conf.
 #
 # Guarded on the binary existing so a laptop provisioned before
 # `init/pacman.zsh` has run still logs in cleanly.
 if command -v autorandr >/dev/null 2>&1; then
-    autorandr --change --default undocked
+    autorandr --change --default horizontal
 fi
 
 # Tell i3 which connector the Samsung is on this boot, before i3 starts and
