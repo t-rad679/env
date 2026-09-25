@@ -1,0 +1,218 @@
+#!/usr/bin/zsh
+
+# Pin each workspace to the external monitor it belongs on, resolving every
+# monitor's connector from its EDID at run time.
+#
+# Usage: monitor-output        (no arguments; safe to run at any time)
+#
+# Replaces bin/samsung-output and bin/ws3-output. Both did the same three
+# things -- find a connector by EDID, publish it, move workspaces onto it --
+# and differed only in the model string and the workspace list, so both are
+# now rows in MONITORS below.
+#
+# Monitors are named by desk position, not by vendor. Both externals are
+# Samsungs now, so "samsung" no longer identifies one; the old name dates from
+# when the other panel was a ViewSonic.
+#
+# Why EDID and not a connector name written into the i3 config: this laptop's
+# DisplayPort connector numbers are NOT stable. They swap between boots, and
+# they also move when the dock re-enumerates while logged in -- the 32" has
+# been observed on DisplayPort-6 and DisplayPort-7 within a single session.
+# A connector baked into the config would be wrong a good fraction of the time.
+# This is the same hazard machines/laptop/autorandr/settings.ini sets
+# `match-edid=1` for.
+#
+# For each monitor this does two things:
+#
+#   1. Publish the connector as the X resource i3wm.<name>_output. The i3
+#      config (machines/laptop/i3/laptop.conf) reads it with set_from_resource
+#      into ordinary `workspace N output` rules, so those workspaces open on
+#      the right panel even if they do not exist yet. When a monitor is absent
+#      its resource is set to a name no output has, which makes i3 ignore its
+#      rules and open the workspaces wherever it would anyway.
+#   2. If i3 is running and any connector changed, reload i3 so it re-reads the
+#      resources, then move any of the workspaces that ALREADY exist. The rules
+#      from step 1 only apply to workspaces created after the reload.
+#
+# Every monitor is handled in one pass on purpose: that means one xrdb write,
+# one i3 reload and one focus save/restore per dock event, instead of one of
+# each per monitor. The old two-script arrangement paid all three twice and
+# reloaded i3 in the middle of the other script's focus dance.
+#
+# Called from three places, because none covers every case on its own:
+#   * machines/laptop/xprofile.sh, after the login `autorandr --change` and
+#     before i3 starts, so i3 reads the right values on its first config load.
+#     That call can't be left to the autorandr hook, because autorandr skips
+#     hooks when the matching profile is already applied.
+#   * machines/laptop/autorandr/postswitch, for docking/undocking while
+#     already logged in.
+#   * machines/laptop/bin/chat-grid, which i3 execs at login, once workspace 3
+#     provably exists.
+
+set -u
+
+# One row per external monitor: NAME:EDID_MODEL:WORKSPACES
+#
+#   NAME        desk position. Becomes the X resource i3wm.<name>_output.
+#   EDID_MODEL  the string the panel reports in `autorandr --fingerprint`,
+#               not the marketing name. Read it with:
+#                   edid-decode < /sys/class/drm/card1-DP-N/edid |
+#                       grep 'Display Product Name'
+#   WORKSPACES  space separated. Keep in sync with the `workspace N output`
+#               rules in machines/laptop/i3/laptop.conf.
+#
+# The built-in panel is deliberately not here: its connector name (eDP) is
+# stable and it is on in both autorandr profiles, so laptop.conf pins
+# workspace 8 to it directly.
+local -ra MONITORS=(
+    "left:LS32A70:1 2 4"
+    "right:U32J59x:3"
+)
+
+# Deliberately not a real connector name: i3 ignores a `workspace N output`
+# rule whose output does not exist. Keep in sync with the fallback in
+# laptop.conf.
+local -r ABSENT="none"
+
+# No X, nothing to do. autorandr's hotplug units run outside a login session,
+# so this is a real case, not paranoia.
+if [[ -z "${DISPLAY:-}" ]]; then
+    exit 0
+fi
+
+if ! command -v autorandr >/dev/null 2>&1; then
+    print -u2 "${0:t}: autorandr not installed; cannot resolve monitors"
+    exit 1
+fi
+
+# `autorandr --fingerprint` prints one "OUTPUT <edid-hex>" line per connected
+# output, which is exactly the mapping needed here. Read once and reuse: it
+# shells out to xrandr, and the answer is the same for every row.
+local fingerprint
+fingerprint="$(autorandr --fingerprint 2>/dev/null)"
+
+# EDID stores the model as plain ASCII, so a panel can be found by looking for
+# the hex encoding of its model name inside each output's fingerprint.
+# Encoding the needle is cheaper -- and has fewer dependencies -- than decoding
+# every EDID.
+edid_connector() {
+    local -r model="$1"
+    local hex="" line
+    local -i i
+    for (( i = 1; i <= ${#model}; i++ )); do
+        hex+="$(printf '%02x' "'${model[i]}")"
+    done
+
+    line="$(print -r -- "$fingerprint" | grep -i -m1 -- "$hex")"
+    if [[ -n "$line" ]]; then
+        print -r -- "${line%% *}"
+    else
+        print -r -- "$ABSENT"
+    fi
+}
+
+# Resolve every monitor first, then write the resources in one xrdb pass. A
+# partial write followed by a failure would leave i3 pointing half at the old
+# layout and half at the new one.
+local row name model connector previous
+local -A connector_of
+local -a resource_updates=()
+local -i changed=0
+
+for row in "${MONITORS[@]}"; do
+    name="${row%%:*}"
+    model="${${row#*:}%%:*}"
+
+    connector="$(edid_connector "$model")"
+    connector_of[$name]="$connector"
+
+    previous="$(xrdb -get "i3wm.${name}_output" 2>/dev/null)"
+    if [[ "$previous" != "$connector" ]]; then
+        resource_updates+=("i3wm.${name}_output: $connector")
+        changed=1
+    fi
+done
+
+if (( ${#resource_updates} > 0 )); then
+    print -rl -- "${resource_updates[@]}" | xrdb -merge || exit 1
+fi
+
+# i3 not up yet (the login path). It will read the resources when it starts.
+if ! i3-msg -t get_version >/dev/null 2>&1; then
+    exit 0
+fi
+
+# One reload for every monitor: it re-reads all the resources at once.
+if (( changed )); then
+    i3-msg -q reload || exit 1
+fi
+
+local workspaces
+workspaces="$(i3-msg -t get_workspaces)" || exit 1
+
+# Outputs i3 will actually accept as a `move workspace to output` target.
+# A connector can resolve from EDID -- the monitor is plugged in and its
+# fingerprint is readable -- while still being DISABLED, and i3 rejects a move
+# to an inactive output with "ERROR: No output matched". Without this guard
+# that error aborts the loop below partway through, leaving focus parked on a
+# stray workspace instead of where it started.
+#
+# Not hypothetical: the autorandr fallback used to turn connected DisplayPorts
+# off (see systemd/autorandr.service.d/10-default-profile.conf), which put a
+# plugged-in monitor into exactly this state.
+local -A active_output
+local o
+for o in $(i3-msg -t get_outputs | jq -r '.[] | select(.active) | .name'); do
+    active_output[$o]=1
+done
+
+# Which of our workspaces exist and sit on the wrong output. One that has never
+# been opened needs nothing; the config rules cover it from here on.
+local ws ws_output
+local -a ws_list stray=()
+local -A target_of
+
+for row in "${MONITORS[@]}"; do
+    name="${row%%:*}"
+    connector="${connector_of[$name]}"
+
+    # Absent monitor: its workspaces are wherever i3 put them, which is the
+    # only answer available.
+    [[ "$connector" == "$ABSENT" ]] && continue
+
+    # Resolved but not enabled. Nothing can be moved there yet; the X resource
+    # is published either way, so i3's `workspace N output` rules pick the
+    # monitor up as soon as it comes on.
+    (( ${+active_output[$connector]} )) || continue
+
+    ws_list=(${=${row##*:}})
+    for ws in "${ws_list[@]}"; do
+        ws_output="$(print -r -- "$workspaces" | jq -r --arg ws "$ws" \
+            '.[] | select(.name == $ws) | .output')"
+        if [[ -n "$ws_output" && "$ws_output" != "$connector" ]]; then
+            stray+=("$ws")
+            target_of[$ws]="$connector"
+        fi
+    done
+done
+
+if (( ${#stray} == 0 )); then
+    exit 0
+fi
+
+# `move workspace to output` acts on the focused workspace, so focus has to go
+# to each stray workspace and then come back. --no-auto-back-and-forth keeps
+# this from clobbering the workspace that back-and-forth would return to.
+local previous_ws
+previous_ws="$(print -r -- "$workspaces" | jq -r '.[] | select(.focused) | .name')"
+
+for ws in "${stray[@]}"; do
+    i3-msg -q "workspace --no-auto-back-and-forth $ws; move workspace to output ${target_of[$ws]}" || exit 1
+done
+
+# Unconditional: the loop above leaves focus on the LAST stray workspace, which
+# is not necessarily where it started even when the starting workspace was one
+# of the strays. Switching to the workspace already focused is a no-op.
+if [[ -n "$previous_ws" ]]; then
+    i3-msg -q "workspace --no-auto-back-and-forth $previous_ws"
+fi

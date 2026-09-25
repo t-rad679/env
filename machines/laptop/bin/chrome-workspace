@@ -7,7 +7,7 @@
 #
 # Usage: chrome-workspace <profile> [--no-focus]
 #
-#   profile     personal   -- "Personal Chrome", ws2 (pinned to the Samsung)
+#   profile     personal   -- "Personal Chrome", ws2 (pinned to the left monitor)
 #               weftworks  -- "WeftWorks Chrome", ws1 (pinned to the panel)
 #
 #   Starts whichever of the two windows is missing, then focuses Chrome (which
@@ -105,7 +105,7 @@ adopt_window() {
 
     # Moving to a workspace that does not exist yet creates it, and i3 creates
     # it on its assigned output (laptop.conf pins ws1 and ws8 to the panel, ws2
-    # and ws4 to the Samsung).
+    # and ws4 to the left monitor).
     i3-msg -q "[id=$win] mark --add $mark, move container to workspace number $WS"
 }
 

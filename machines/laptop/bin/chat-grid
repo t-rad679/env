@@ -1,7 +1,7 @@
 #!/usr/bin/zsh
 
 # Build the workspace 3 chat grid: Messenger, Messages, Signal and Discord in
-# a 2x2, on the ViewSonic when docked.
+# a 2x2, on the right-hand monitor when docked.
 #
 # Usage: chat-grid         (no arguments; i3 execs it at login)
 #
@@ -53,7 +53,7 @@ existing="$(i3-msg -t get_tree | jq -r '
     ] | length')"
 if [[ "${existing:-0}" -gt 0 ]]; then
     print -u2 "${0:t}: chat windows already running; only re-pinning the output"
-    exec "${0:h}/ws3-output"
+    exec "${0:h}/monitor-output"
 fi
 
 # append_layout applies to the focused workspace, so ws3 has to be focused for
@@ -84,7 +84,7 @@ if [[ -n "$previous" && "$previous" != "$WS" ]]; then
     i3-msg -q "workspace --no-auto-back-and-forth $previous"
 fi
 
-# Put the workspace on the ViewSonic if the dock is attached. Done here rather
-# than as a second i3 `exec` so it cannot race this one: ws3 provably exists by
-# now, and i3 can only move a workspace that exists.
-exec "${0:h}/ws3-output"
+# Put the workspace on the right-hand monitor if the dock is attached. Done
+# here rather than as a second i3 `exec` so it cannot race this one: ws3
+# provably exists by now, and i3 can only move a workspace that exists.
+exec "${0:h}/monitor-output"

@@ -1,7 +1,7 @@
 #!/usr/bin/zsh
 
 # The Grimoire: one dedicated Obsidian window on the grimoire vault, living on
-# workspace 4 (which laptop.conf pins to the Samsung), with a kitty terminal
+# workspace 4 (which laptop.conf pins to the left monitor), with a kitty terminal
 # in the vault directly to its right, split at the golden ratio.
 #
 # Usage: obsidian-grimoire [--no-focus]
@@ -98,7 +98,7 @@ start_grimoire() {
     fi
 
     # Moving to a workspace that does not exist yet creates it, and i3 creates
-    # it on its assigned output -- so this lands on the Samsung when docked.
+    # it on its assigned output -- so this lands on the left monitor when docked.
     i3-msg -q "[id=$win] mark --add $MARK, move container to workspace number $WS"
 }
 

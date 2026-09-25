@@ -40,11 +40,11 @@ if command -v autorandr >/dev/null 2>&1; then
     autorandr --change --default horizontal
 fi
 
-# Tell i3 which connector the Samsung is on this boot, before i3 starts and
-# reads its config (the `workspace 2 output` / `workspace 4 output` rules in
+# Tell i3 which connector each external monitor is on this boot, before i3
+# starts and reads its config (the `workspace N output` rules in
 # machines/laptop/i3/laptop.conf). Not left to the autorandr postswitch hook:
 # autorandr skips hooks when the matching profile is already applied, which is
 # common at login. Guarded like the line above.
-if [ -x "$HOME/src/env/machines/laptop/bin/samsung-output" ]; then
-    "$HOME/src/env/machines/laptop/bin/samsung-output"
+if [ -x "$HOME/src/env/machines/laptop/bin/monitor-output" ]; then
+    "$HOME/src/env/machines/laptop/bin/monitor-output"
 fi
