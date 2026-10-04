@@ -41,6 +41,14 @@ niri
 # the i3 session is still selectable from the greeter.
 noctalia
 
+# The login screen: greetd owns the VT and runs one greeter;
+# noctalia-greeter is a Noctalia-styled one with a session picker. Config in
+# machines/laptop/greetd/config.toml, wired up by init.zsh above.
+#
+# noctalia-greeter is AUR-only (yay handles it); greetd is in extra.
+greetd
+noctalia-greeter
+
 # X11 apps under niri. niri has no built-in Xwayland -- it integrates
 # xwayland-satellite, spawning it on demand the first time something touches
 # the X socket and exporting DISPLAY itself. Nothing to configure, but without

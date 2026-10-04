@@ -1,0 +1,45 @@
+# greetd config, linked to /etc/greetd/config.toml by machines/laptop/init.zsh
+# (sudo_link_path, so edits here take effect without re-copying -- same pattern
+# as pacman.conf and the desktop's LightDM drop-in).
+#
+# Laptop-only, deliberately. The desktop is still an i3/X11 machine booting
+# LightDM with its own HDMI-3 greeter drop-in, and greetd and LightDM both want
+# to be display-manager.service -- a shared config here would switch the
+# desktop's login screen out from under it on the next init run. Move this to
+# config/greetd/ when the desktop moves to niri too.
+#
+# greetd is the display manager: a tiny daemon that owns the VT, runs ONE
+# greeter, and hands the session over after the greeter authenticates. It does
+# no UI of its own, which is why the greeter below is a separate package.
+
+[terminal]
+# VT 1. LightDM's default is VT 7; putting the greeter on 1 means the boot
+# messages scroll past and the login screen appears on the same VT rather than
+# switching away, and it leaves 2-6 free as text consoles -- which is the
+# escape hatch if a session ever fails to start (Ctrl+Alt+F2, log in, fix it).
+vt = 1
+
+[default_session]
+# noctalia-greeter-session, not noctalia-greeter: the greeter is a Wayland
+# client and has no compositor of its own, so it cannot talk to DRM directly.
+# The -session wrapper starts the bundled wlroots compositor
+# (noctalia-greeter-compositor) under dbus-run-session, points
+# XDG_RUNTIME_DIR at a directory it creates itself, and runs the greeter
+# inside that. Pointing this at the bare greeter binary gets a black VT.
+#
+# No `-- --session niri` here: that pins one session and hides the picker.
+# Leaving it off keeps both Niri (/usr/share/wayland-sessions/niri.desktop)
+# and i3 (/usr/share/xsessions/) selectable, and the greeter remembers the
+# last one used in its own sync.toml.
+#
+# Logs go to the journal (`journalctl -u greetd`); the wrapper parks stdout
+# and stderr so wlroots cannot paint over the VT. Set NOCTALIA_GREETER_LOG
+# =stderr when debugging a greeter that will not come up.
+command = "/usr/bin/noctalia-greeter-session"
+
+# The unprivileged user the GREETER runs as -- not the user who logs in.
+# It needs to be in the `video` group to open the DRM device; the package's
+# post-install creates it that way, and init.zsh checks rather than assumes.
+# The real login happens through PAM afterwards (/etc/pam.d/greetd), as the
+# user who typed their password, so this account has no access to anything.
+user = "greeter"
