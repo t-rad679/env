@@ -68,3 +68,8 @@ flameshot
 # config/i3/conf.d/autostart.conf has always exec'd dunst, but the package was
 # never in this list, so on a fresh machine that exec failed silently.
 dunst
+
+# Color emoji font. Without one, fontconfig has nothing to fall back to for
+# emoji codepoints and every emoji renders as a box (tofu): Monarch Money's
+# category icons, Discord/Slack reactions, emoji in web pages.
+noto-fonts-emoji
