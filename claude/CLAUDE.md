@@ -30,7 +30,7 @@ When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` 
 - Instead, just give me the exact command(s) to run myself in a separate terminal.
 
 # Memory
-- **mem0 is the primary memory store.** Write learnings, decisions, project state, and my preferences there via `add_memory` as they come up — no need to ask permission first.
+- **mem0 is the primary memory store.** Learnings, decisions, project state, and my preferences belong there.
 - **Be proactive, not just reactive to bugs/gotchas.** Capture ongoing project state (in-progress reorgs, workflow changes, structural decisions) and my preferences (what I like when you do, tone/formatting/process choices I confirm or correct) — not only hard technical gotchas. If unsure whether something is memory-worthy, ask me rather than silently deciding either way.
 - **Check mem0 often.** At minimum: when starting a new task, and whenever significant new information is revealed mid-conversation. Don't wait to be asked.
 - **Mind the query budget.** mem0 search/write calls are rate-limited, so don't fire off redundant or overlapping searches — batch a few well-angled queries (e.g. 2-4 varied `search_memories` calls) when you genuinely need them rather than querying reflexively on every turn.
