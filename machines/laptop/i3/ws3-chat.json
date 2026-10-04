@@ -14,9 +14,10 @@
 // 2x2 come out the same on any output.
 //
 // Criteria notes:
-//   * Messenger and Messages are Chrome PWAs. Their WM class is the shared
-//     "Google-chrome"; only the INSTANCE carries the app id, so matching on
-//     class here would swallow the first ordinary browser window instead.
+//   * Messenger and Messages are Chrome app windows, each on its own
+//     --user-data-dir, which is what lets chat-grid pass --class. Match on
+//     that class; the instance is Chrome's own "www.messenger.com" /
+//     "messages.google.com", which it sets from the URL and ignores --name.
 //   * Signal and Discord report lowercase classes ("signal", "discord"), not
 //     the capitalised names their .desktop files use.
 //
@@ -36,14 +37,14 @@
                     "type": "con",
                     "percent": 0.5,
                     "swallows": [
-                        { "instance": "^crx_bbdeiblfgdokhlblpgeaokenkfknecgl$" }
+                        { "class": "^messenger-chrome$" }
                     ]
                 },
                 {
                     "type": "con",
                     "percent": 0.5,
                     "swallows": [
-                        { "instance": "^crx_hpfldicfbfomlpcikngkocigghgafkph$" }
+                        { "class": "^messages-chrome$" }
                     ]
                 }
             ]

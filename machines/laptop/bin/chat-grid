@@ -20,11 +20,40 @@
 # The plain `assign` rules in machines/laptop/i3/autostart.conf are the
 # fallback for later: once these placeholders are used up, relaunching e.g.
 # Signal by hand still lands it on ws3, just without a reserved corner.
+#
+# Why Messenger and Messages each get their own --user-data-dir, the same way
+# machines/laptop/bin/chrome-workspace gives one to each browser profile:
+# Chrome's process singleton is per user-data-dir, not per profile, so when
+# both ran out of ~/.config/google-chrome they raced it at every cold login.
+# Both spawned a browser process; one won the SingletonLock symlink, and the
+# loser -- which could not open the profile databases the winner already held
+# -- put up a "Profile error occurred" dialog for about a second, then exited
+# and deleted Singleton{Lock,Cookie,Socket} on its way out. That left the
+# winner running with no singleton at all, so from then on every launch
+# against that user-data-dir forked another doomed browser: no app window, a
+# dialog too brief to read, and two browsers writing one profile, which is
+# what kept signing Google Messages out. Separate dirs, separate singletons,
+# nothing to race.
+#
+# The cost of a separate user-data-dir is that --app-id no longer works: a PWA
+# is registered inside a profile, and a fresh dir has no such registration (it
+# opens no window at all). Hence --app=<url>, which needs no install. The
+# payoff is that Chrome honours --class for these, so the windows carry
+# "messenger-chrome" and "messages-chrome" instead of the shared
+# "Google-chrome", and i3 can match on class like it does for every other
+# window here -- see the criteria in ws3-chat.json and autostart.conf.
+#
+# Launcher output goes to the journal (`journalctl --user -t chat-grid`)
+# rather than /dev/null: discarding it is what hid the failure above for as
+# long as it did. Retention is journald's, so nothing here has to prune.
 
 set -u
 
+
 local -r LAYOUT="$HOME/src/env/machines/laptop/i3/ws3-chat.json"
 local -r WS="3"
+local -r MESSENGER_UDD="$HOME/.config/chrome-messenger"
+local -r MESSAGES_UDD="$HOME/.config/chrome-messages"
 
 if ! i3-msg -t get_version >/dev/null 2>&1; then
     print -u2 "${0:t}: i3 is not running"
@@ -47,8 +76,8 @@ existing="$(i3-msg -t get_tree | jq -r '
       | select(
             (.class // "") == "signal" or
             (.class // "") == "discord" or
-            (.instance // "") == "crx_bbdeiblfgdokhlblpgeaokenkfknecgl" or
-            (.instance // "") == "crx_hpfldicfbfomlpcikngkocigghgafkph"
+            (.class // "") == "messenger-chrome" or
+            (.class // "") == "messages-chrome"
         )
     ] | length')"
 if [[ "${existing:-0}" -gt 0 ]]; then
@@ -73,12 +102,21 @@ i3-msg -q "workspace --no-auto-back-and-forth $WS; append_layout $LAYOUT" || exi
 # then takes the apps down with it, and a Chrome app launcher killed mid-
 # handoff loses the window it was opening. setsid puts each app in its own
 # session so nothing upstream can reach it.
-setsid -f google-chrome-stable --profile-directory=Default \
-    --app-id=bbdeiblfgdokhlblpgeaokenkfknecgl >/dev/null 2>&1
-setsid -f google-chrome-stable --profile-directory=Default \
-    --app-id=hpfldicfbfomlpcikngkocigghgafkph >/dev/null 2>&1
-setsid -f signal-desktop >/dev/null 2>&1
-setsid -f discord >/dev/null 2>&1
+#
+# systemd-cat wraps each launch so stdout and stderr land in the journal
+# instead of /dev/null -- see the header for why. It execs the program rather
+# than staying in the middle, so it costs no extra process and does not change
+# what setsid is doing.
+setsid -f systemd-cat --identifier=chat-grid \
+    google-chrome-stable --user-data-dir="$MESSENGER_UDD" \
+    --class=messenger-chrome --no-first-run --no-default-browser-check \
+    --app=https://www.messenger.com/
+setsid -f systemd-cat --identifier=chat-grid \
+    google-chrome-stable --user-data-dir="$MESSAGES_UDD" \
+    --class=messages-chrome --no-first-run --no-default-browser-check \
+    --app=https://messages.google.com/web
+setsid -f systemd-cat --identifier=chat-grid signal-desktop
+setsid -f systemd-cat --identifier=chat-grid discord
 
 if [[ -n "$previous" && "$previous" != "$WS" ]]; then
     i3-msg -q "workspace --no-auto-back-and-forth $previous"
