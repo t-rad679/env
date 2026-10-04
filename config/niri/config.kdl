@@ -1,0 +1,300 @@
+// niri config, shared by both machines. Linked to ~/.config/niri/config.kdl
+// by init/links.zsh. See https://yalter.github.io/niri/ for the full
+// reference; /usr/share/doc/niri/default-config.kdl is the commented upstream
+// default this started from.
+//
+// Role-specific config is the last line of this file. Unlike i3, niri's
+// `include` does NOT expand environment variables (only `~`) and does NOT
+// accept globs -- a pattern that matches nothing is a hard parse error, not a
+// silent skip. So the i3 trick of `include .../machines/$MACHINE_ROLE/i3/*.conf`
+// cannot work here. Instead init/links.zsh links the role's file to a fixed
+// path, ~/.config/niri/role.kdl, and this file includes that path. Every role
+// ships a niri/role.kdl (the desktop's is comment-only) so the include always
+// resolves.
+//
+// niri watches this file and reloads on save -- no restart, no reload key.
+// A config that fails to parse is rejected and the old one stays live, with
+// the error shown on screen. Check before saving with:
+//     niri validate -c ~/.config/niri/config.kdl
+
+input {
+    keyboard {
+        xkb {
+            // Left blank: both machines are plain us. Mirrors the X side,
+            // where nothing in this repo sets a layout either.
+        }
+    }
+
+    touchpad {
+        tap
+        natural-scroll
+    }
+
+    mouse {
+        // No acceleration, matching the X default (libinput's flat profile).
+        accel-profile "flat"
+    }
+
+    // Focus follows the keyboard only. i3 is click-to-focus by default and
+    // this config never changed that, so keep the same behaviour rather than
+    // inheriting niri's.
+    // (focus-follows-mouse is simply not enabled here.)
+}
+
+layout {
+    gaps 8
+
+    // "never" is niri's default: the ribbon only scrolls far enough to bring
+    // the focused column fully into view, so columns stay where you put them.
+    // "always" instead keeps the focused column pinned to the centre of the
+    // screen, which some people prefer on a wide monitor -- try it on the
+    // dock's 3840px panel if the scrolling feels unpredictable.
+    center-focused-column "never"
+
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+
+    default-column-width { proportion 0.5; }
+
+    focus-ring {
+        width 2
+        active-color "#7aa2f7"
+        inactive-color "#3b4261"
+    }
+
+    border {
+        off
+    }
+}
+
+// Noctalia Shell: the bar, launcher, notifications, control centre, lock
+// screen, OSDs and wallpaper, all in one process. It replaces what i3 starts
+// separately (i3bar/i3status, dunst, nm-applet, ulauncher, bin/wallpaper), so
+// none of those are spawned here -- running them alongside would mean two
+// bars, two notification daemons and two launchers.
+//
+// --daemon is what the packaged .desktop entry uses. `noctalia msg ...` (see
+// the binds below) talks to this instance over its IPC socket.
+spawn-at-startup "noctalia" "--daemon"
+
+// X11 apps. niri has no built-in Xwayland; it integrates xwayland-satellite
+// instead, spawning it on demand the first time something connects to the X
+// socket and exporting DISPLAY into the session itself. So this needs no
+// config at all beyond having the package installed -- which is why
+// xwayland-satellite is in the package lists and not a spawn-at-startup line.
+
+prefer-no-csd
+
+screenshot-path "~/pics/screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+hotkey-overlay {
+    // Show the key list on startup until the binds below are muscle memory.
+    // Delete this block (or add `skip-at-startup`) once they are.
+}
+
+environment {
+    // Electron apps (Chrome, Signal, Discord, Spotify) run through
+    // xwayland-satellite by default, which works but blurs on the HiDPI
+    // panel. Setting this makes them pick Wayland natively where they can.
+    // Comment it out if one of them misbehaves -- XWayland is the fallback.
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+}
+
+binds {
+    // Keys are named as in the i3 config wherever the action maps cleanly, so
+    // the muscle memory from config/i3/conf.d/baseconfig.conf carries over.
+    // niri is a scrollable tiler, not a tree tiler, so the i3 bindings that
+    // describe a tree (split h/v, layout stacking/tabbed, focus parent) have
+    // no counterpart and are simply absent.
+
+    Mod+Shift+Slash { show-hotkey-overlay; }
+
+    // --- launching -------------------------------------------------------
+
+    // $mod+Return in i3.
+    Mod+Return hotkey-overlay-title="Terminal: kitty" { spawn "kitty"; }
+
+    // $mod+d in i3 (dmenu there, Ulauncher on Ctrl+Space in practice).
+    // Noctalia's launcher is part of the shell, so there is no second
+    // launcher process to keep running.
+    Mod+D hotkey-overlay-title="Launcher" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
+
+    Mod+C hotkey-overlay-title="Control centre" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
+
+    // Super+Alt+L is niri's suggested lock bind; the i3 config has no lock key
+    // at all, so there is no habit to preserve.
+    Super+Alt+L hotkey-overlay-title="Lock the screen" { spawn "noctalia" "msg" "session" "lock"; }
+
+    // --- windows ---------------------------------------------------------
+
+    // $mod+Shift+q in i3. niri's own default is Mod+Q; this keeps i3's.
+    Mod+Shift+Q repeat=false { close-window; }
+
+    // $mod+f in i3.
+    Mod+F { fullscreen-window; }
+    Mod+Shift+F { maximize-column; }
+
+    // $mod+Shift+space / $mod+space in i3.
+    Mod+Shift+Space { toggle-window-floating; }
+    Mod+Space { switch-focus-between-floating-and-tiling; }
+
+    // niri's overview: every workspace on every monitor at once. No i3
+    // equivalent, but it is the fastest way to find a window, so it gets the
+    // short key.
+    Mod+O repeat=false { toggle-overview; }
+
+    // --- focus -----------------------------------------------------------
+
+    // i3's j/k/l/semicolon, one key right of hjkl. Left/right move between
+    // columns, up/down between the windows stacked inside one.
+    Mod+J     { focus-column-left; }
+    Mod+K     { focus-window-down; }
+    Mod+L     { focus-window-up; }
+    Mod+Semicolon { focus-column-right; }
+
+    Mod+Left  { focus-column-left; }
+    Mod+Down  { focus-window-down; }
+    Mod+Up    { focus-window-up; }
+    Mod+Right { focus-column-right; }
+
+    Mod+Shift+J     { move-column-left; }
+    Mod+Shift+K     { move-window-down; }
+    Mod+Shift+L     { move-window-up; }
+    Mod+Shift+Semicolon { move-column-right; }
+
+    Mod+Shift+Left  { move-column-left; }
+    Mod+Shift+Down  { move-window-down; }
+    Mod+Shift+Up    { move-window-up; }
+    Mod+Shift+Right { move-column-right; }
+
+    // Pull the focused window out of its column into its own, or into the
+    // column beside it. This is niri's answer to i3's split h/v.
+    Mod+BracketLeft  { consume-or-expel-window-left; }
+    Mod+BracketRight { consume-or-expel-window-right; }
+
+    // --- workspaces ------------------------------------------------------
+
+    // niri workspaces are dynamic and per-monitor: there is always one empty
+    // workspace at the bottom of each monitor's stack, and indices renumber as
+    // workspaces come and go. So Mod+1..0 is "the Nth workspace on this
+    // monitor", not i3's "the global workspace named N".
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+
+    Mod+Shift+1 { move-column-to-workspace 1; }
+    Mod+Shift+2 { move-column-to-workspace 2; }
+    Mod+Shift+3 { move-column-to-workspace 3; }
+    Mod+Shift+4 { move-column-to-workspace 4; }
+    Mod+Shift+5 { move-column-to-workspace 5; }
+    Mod+Shift+6 { move-column-to-workspace 6; }
+    Mod+Shift+7 { move-column-to-workspace 7; }
+    Mod+Shift+8 { move-column-to-workspace 8; }
+    Mod+Shift+9 { move-column-to-workspace 9; }
+
+    // --- across workspaces and monitors: Ctrl ----------------------------
+    //
+    // i3 numbered its workspaces, so they never competed for direction keys.
+    // niri has three axes and only two directions -- columns go left/right,
+    // the windows stacked inside a column go up/down, and workspaces ALSO go
+    // up/down -- so the bare direction keys are oversubscribed. Ctrl is the
+    // third modifier that resolves it, and it means one thing throughout:
+    //
+    //            left / right (J ;)        down / up (K L)
+    //   Mod+            focus column            focus window in column
+    //   Mod+Shift+      move column             move window in column
+    //   Mod+Ctrl+       focus MONITOR           focus WORKSPACE
+    //   Mod+Ctrl+Shift+ move workspace->monitor move COLUMN to workspace
+    //
+    // Read it as: Ctrl widens the scope from "inside this workspace" to
+    // "between workspaces and monitors", and Shift means "bring the thing
+    // with you instead of just looking". Every direction key keeps exactly
+    // one meaning, and the arrows mirror the letters on every row.
+    //
+    // Note the axes swap under Ctrl, and that is the point rather than a
+    // slip: monitors are the thing arranged left-to-right, and workspaces
+    // are the thing stacked vertically. This used to put focus-workspace on
+    // Mod+Ctrl+Left/Right to mirror i3's workspace prev/next, which meant
+    // driving a vertical axis with horizontal keys -- the wart that left
+    // move-column-to-workspace with nowhere sensible to go.
+    //
+    // Directions, never output names: the laptop's DisplayPort numbers are
+    // not stable across boots or dock cycles.
+
+    Mod+Ctrl+J         { focus-monitor-left; }
+    Mod+Ctrl+Semicolon { focus-monitor-right; }
+    Mod+Ctrl+Left      { focus-monitor-left; }
+    Mod+Ctrl+Right     { focus-monitor-right; }
+
+    Mod+Ctrl+K    { focus-workspace-down; }
+    Mod+Ctrl+L    { focus-workspace-up; }
+    Mod+Ctrl+Down { focus-workspace-down; }
+    Mod+Ctrl+Up   { focus-workspace-up; }
+
+    Mod+Ctrl+Shift+J         { move-workspace-to-monitor-left; }
+    Mod+Ctrl+Shift+Semicolon { move-workspace-to-monitor-right; }
+    Mod+Ctrl+Shift+Left      { move-workspace-to-monitor-left; }
+    Mod+Ctrl+Shift+Right     { move-workspace-to-monitor-right; }
+
+    // Send the focused column to the workspace below/above. `move-column-`,
+    // not `move-window-`: this takes every window stacked in the column. The
+    // single-window variants are move-window-to-workspace-down/up if the
+    // column-wide behaviour ever turns out to be the wrong default.
+    Mod+Ctrl+Shift+K    { move-column-to-workspace-down; }
+    Mod+Ctrl+Shift+L    { move-column-to-workspace-up; }
+    Mod+Ctrl+Shift+Down { move-column-to-workspace-down; }
+    Mod+Ctrl+Shift+Up   { move-column-to-workspace-up; }
+
+    // --- sizing ----------------------------------------------------------
+
+    // i3 has a whole resize mode on $mod+r; niri cycles the preset widths
+    // declared in layout{} above, which covers the same ground in one key.
+    Mod+R { switch-preset-column-width; }
+    Mod+Shift+R { reset-window-height; }
+    Mod+Minus { set-column-width "-10%"; }
+    Mod+Equal { set-column-width "+10%"; }
+    Mod+Shift+Minus { set-window-height "-10%"; }
+    Mod+Shift+Equal { set-window-height "+10%"; }
+
+    // --- media and screenshots -------------------------------------------
+
+    // i3 drives these with pactl; under niri they go through Noctalia so its
+    // on-screen display shows the change. allow-when-locked, since the lock
+    // screen should not mean a stuck volume.
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "noctalia" "msg" "volume-up"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "noctalia" "msg" "volume-down"; }
+    XF86AudioMute        allow-when-locked=true { spawn "noctalia" "msg" "volume-mute"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn "noctalia" "msg" "mic-mute"; }
+
+    XF86AudioPlay allow-when-locked=true { spawn "noctalia" "msg" "media" "toggle"; }
+    XF86AudioPrev allow-when-locked=true { spawn "noctalia" "msg" "media" "previous"; }
+    XF86AudioNext allow-when-locked=true { spawn "noctalia" "msg" "media" "next"; }
+
+    // flameshot is an X11 program and its i3 binding (conf.d/fnrow.conf) does
+    // not survive the move -- the legacy X11 grab it relies on sees only
+    // XWayland's view of the screen. Noctalia's own capture replaces it.
+    Print { spawn "noctalia" "msg" "screenshot-region"; }
+    Shift+Print { spawn "noctalia" "msg" "screenshot-fullscreen"; }
+
+    // --- session ---------------------------------------------------------
+
+    // i3's $mod+Shift+e. niri shows its own confirmation dialog, so there is
+    // no i3-nagbar equivalent to wire up.
+    Mod+Shift+E { quit; }
+
+    Mod+Shift+P { power-off-monitors; }
+}
+
+// Role-specific config. See the header: this is a fixed path, not a
+// $MACHINE_ROLE pattern, because niri's include expands `~` and nothing else.
+// init/links.zsh points it at machines/<role>/niri/role.kdl.
+include "~/.config/niri/role.kdl"

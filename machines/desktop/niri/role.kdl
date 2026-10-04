@@ -1,0 +1,14 @@
+// Desktop-only niri config. Linked to ~/.config/niri/role.kdl by
+// init/links.zsh and included by config/niri/config.kdl.
+//
+// The desktop is still an i3/X11 machine -- it boots LightDM and niri is not
+// in machines/desktop/packages.txt. This file exists anyway for the same
+// reason machines/desktop/i3/ always ships at least one .conf: the include
+// has to resolve. niri's `include` takes no globs and treats a missing file
+// as a parse error, so an absent role.kdl would not be skipped the way i3
+// skips an empty glob -- it would reject the whole config.
+//
+// When this machine does move to niri, its i3-only config is the list of
+// things to port: the LightDM HDMI-3 greeter drop-in (which becomes a greetd
+// one -- see machines/laptop/greetd/), `xset s off -dpms`, the Spotify
+// screensaver, and the Steam and gamescope window rules.

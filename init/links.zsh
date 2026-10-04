@@ -28,6 +28,26 @@ link_path "$ENV_DIR/config/zsh/env" "$HOME/env" || rc=1
 # pulled in by config/i3/config via $MACHINE_ROLE (see machines/<role>/i3/).
 link_path "$ENV_DIR/config/i3" "$HOME/.config/i3" || rc=1
 
+# niri: two file links rather than one directory link, which is the opposite
+# of i3 above and is forced by how niri resolves `include`.
+#
+# i3 pulls in its role config with `include .../machines/${MACHINE_ROLE}/i3/*.conf`
+# -- wordexp(3) expands the variable and the glob, and an empty match is
+# skipped. niri's include does neither: it expands `~` and nothing else, takes
+# no globs, and treats a file it cannot read as a parse error that rejects the
+# whole config. So the role cannot be named from inside the config file, and
+# the indirection moves here instead: config/niri/config.kdl ends with
+# `include "~/.config/niri/role.kdl"`, and this is what makes that path mean
+# the right role. (Verified that niri resolves the include against the
+# symlink's own path rather than canonicalising it first -- but the include is
+# spelled absolutely, so it does not depend on that.)
+#
+# Every role ships a niri/role.kdl, the desktop's comment-only, so the link is
+# unconditional: a role without one would be a dangling link and a niri
+# session that will not start, which is worth failing loudly over.
+link_path "$ENV_DIR/config/niri/config.kdl" "$HOME/.config/niri/config.kdl" || rc=1
+link_path "$ENV_DIR/machines/$MACHINE_ROLE/niri/role.kdl" "$HOME/.config/niri/role.kdl" || rc=1
+
 # kitty terminal config (font, etc).
 link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" || rc=1
 

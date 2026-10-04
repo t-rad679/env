@@ -1,0 +1,46 @@
+// Laptop-only niri config. Linked to ~/.config/niri/role.kdl by
+// init/links.zsh and included by config/niri/config.kdl (which explains why
+// the link exists instead of a $MACHINE_ROLE include pattern).
+//
+// Nothing in here may duplicate a key bound in config/niri/config.kdl: niri
+// merges the two `binds` blocks but rejects the config outright on a
+// duplicate keybind, which means a typo takes the whole session's config down
+// to the last good version rather than just this file.
+
+// The built-in panel. niri picks a scale from the EDID's physical size when
+// none is given, and this panel -- 2560x1600 across 345x215mm, about 189 DPI
+// -- lands close enough to the 2x threshold to be a coin flip. Pinning it to
+// 1.0 keeps it looking exactly like it does under X, where nothing scales at
+// all. Raise it to 1.25 or 1.5 if that turns out to be too small now that
+// there is per-output scaling to be had.
+//
+// The connector name is stable for the internal panel (it is eDP-1 under DRM,
+// the same way it is "eDP" under X), unlike the dock's DisplayPorts -- those
+// enumerate as DP-7/DP-8 today and something else after the next dock cycle,
+// so they are deliberately not configured here. niri can match an output by
+// "make model serial" instead of connector, which is the EDID-keyed approach
+// machines/laptop/bin/monitor-output takes under X; that is the way to pin
+// the externals when the time comes.
+output "eDP-1" {
+    scale 1.0
+}
+
+binds {
+    // F7 / F8. Laptop-only because the desktop has no /sys/class/backlight
+    // device at all.
+    //
+    // Under i3 these go through machines/laptop/bin/brightness-step, which
+    // exists to stop the backlight being walked down to a black screen.
+    // Noctalia's own brightness control has that floor built in and shows an
+    // OSD with it, so the script is not needed here -- it stays for the i3
+    // session, which is still selectable from the greeter.
+    XF86MonBrightnessDown allow-when-locked=true { spawn "noctalia" "msg" "brightness-down"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "noctalia" "msg" "brightness-up"; }
+
+    // F9, the external-display key. Under i3 this runs `autorandr --change
+    // --force`; autorandr is an X program and does nothing useful here.
+    // Wayland hotplug is the compositor's job and niri handles it natively,
+    // so the key opens Noctalia's display settings instead -- the manual
+    // "fix my displays" button, same role as before.
+    XF86Display { spawn "noctalia" "msg" "settings-open"; }
+}

@@ -24,3 +24,42 @@ picard
 beets
 jetbrains-toolbox
 
+# --- niri / Noctalia / greetd --------------------------------------------
+#
+# Laptop-only for now: the desktop still runs i3 on X with LightDM, and the
+# greetd half of this would take its login screen over. Move these to
+# config/packages.txt when that machine follows.
+
+# The compositor. Scrollable tiling rather than i3's tree; config in
+# config/niri/config.kdl plus machines/laptop/niri/role.kdl.
+niri
+
+# Noctalia Shell: bar, launcher, notifications, control centre, lock screen,
+# OSDs and wallpaper in one process, started by `spawn-at-startup` in the niri
+# config. It is what replaces i3bar/i3status, dunst, nm-applet, Ulauncher and
+# bin/wallpaper on the Wayland side -- all of which stay installed, because
+# the i3 session is still selectable from the greeter.
+noctalia
+
+# X11 apps under niri. niri has no built-in Xwayland -- it integrates
+# xwayland-satellite, spawning it on demand the first time something touches
+# the X socket and exporting DISPLAY itself. Nothing to configure, but without
+# the package every X-only program (JetBrains Toolbox, flameshot, anything
+# Electron that refuses Wayland) silently fails to start.
+xwayland-satellite
+
+# wl-copy / wl-paste, the Wayland xclip. alias.zsh still assumes xclip, which
+# keeps working through xwayland-satellite but only sees the XWayland
+# clipboard -- which is not the same selection a native Wayland app uses.
+wl-clipboard
+
+# Screen sharing. Noctalia takes its own screenshots, but a portal is what
+# Discord, Slack and Meet ask for when they want to share a window, and the
+# only backend installed is xdg-desktop-portal-gtk, which implements no
+# ScreenCast at all (the same gap that forced flameshot's legacy X11 grab --
+# see init/links.zsh). niri speaks org.gnome.Mutter.ScreenCast, so the GNOME
+# backend is the one that works with it.
+xdg-desktop-portal-gnome
+
+# Qt apps pick X11 without this and come out blurry on the HiDPI panel.
+qt6-wayland

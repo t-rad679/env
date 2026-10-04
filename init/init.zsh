@@ -42,7 +42,7 @@ if [[ $INIT_LINKS_ONLY == 0 ]]; then
     run_step "$ENV_DIR/init/node.zsh"     "node via nvm"
 fi
 
-run_step "$ENV_DIR/init/links.zsh"  "symlink zsh files, ~/env, i3, kitty, ~/.xprofile"
+run_step "$ENV_DIR/init/links.zsh"  "symlink zsh files, ~/env, i3, niri, kitty, ~/.xprofile"
 run_step "$ENV_DIR/init/claude.zsh" "Claude config, skills"
 
 if [[ $INIT_LINKS_ONLY == 0 ]]; then
