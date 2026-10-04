@@ -3,11 +3,21 @@
 # Build the workspace 3 chat grid: Messenger, Messages, Signal and Discord in
 # a 2x2, on the right-hand monitor when docked.
 #
-# Usage: chat-grid         (no arguments; i3 execs it at login)
+# Usage: chat-grid             start the apps and build the grid (i3 execs
+#                              this at login); a no-op if they are running
+#        chat-grid --regrid    rebuild the 2x2 from the windows already open
 #
 #     Messenger | Messages
 #     ----------+---------
 #     Signal    | Discord
+#
+# --regrid exists because the login path can only place windows once: the
+# saved layout's placeholders are consumed the moment they swallow something,
+# so a grid that has since been dragged apart cannot be rebuilt by re-running
+# this. --regrid ignores the placeholders entirely and rearranges the live
+# windows instead. It is safe to run blind -- it verifies every window is
+# present before it touches anything, and it only issues layout commands, so
+# nothing is killed, relaunched or reconfigured and no session can be lost.
 #
 # i3 cannot express a grid in its config, so the corners come from a saved
 # layout (machines/laptop/i3/ws3-chat.json) appended to ws3 BEFORE the apps
@@ -49,16 +59,207 @@
 
 set -u
 
+# ${0:t} inside a zsh function evaluates to the function name, so the script
+# name is captured once here for the messages the --regrid helpers print.
+local -r SELF="${0:t}"
 
 local -r LAYOUT="$HOME/src/env/machines/laptop/i3/ws3-chat.json"
 local -r WS="3"
 local -r MESSENGER_UDD="$HOME/.config/chrome-messenger"
 local -r MESSAGES_UDD="$HOME/.config/chrome-messages"
 
+# --regrid only. A workspace to park windows on while their old containers are
+# torn down; high enough not to collide with a real one, and it exists for
+# well under a second. i3 destroys it again as soon as it empties.
+local -r PARK="91"
+
+# The grid, in the order the corners are built: top-left, bottom-left,
+# top-right, bottom-right. Each entry is one or more i3 criteria separated by
+# "|", tried in turn -- Messenger and Messages carry their pre-user-data-dir
+# PWA criteria as fallbacks so --regrid still works on a window that predates
+# the split (see the header) instead of refusing to run.
+local -ra GRID_MARK=(_grid_tl _grid_bl _grid_tr _grid_br)
+local -ra GRID_NAME=(Messenger Signal Messages Discord)
+local -ra GRID_CRIT=(
+    'class="^messenger-chrome$"|instance="^crx_bbdeiblfgdokhlblpgeaokenkfknecgl$"'
+    'class="^signal$"'
+    'class="^messages-chrome$"|instance="^crx_hpfldicfbfomlpcikngkocigghgafkph$"'
+    'class="^discord$"'
+)
+
+local regrid=0
+case "${1:-}" in
+    --regrid) regrid=1 ;;
+    "")       ;;
+    *)        print -u2 "usage: ${0:t} [--regrid]"; exit 2 ;;
+esac
+if (( $# > 1 )); then
+    print -u2 "usage: ${0:t} [--regrid]"
+    exit 2
+fi
+
 if ! i3-msg -t get_version >/dev/null 2>&1; then
     print -u2 "${0:t}: i3 is not running"
     exit 1
 fi
+
+# ----------------------------------------------------------------- --regrid
+
+mark_exists() {
+    i3-msg -t get_tree | jq -e --arg m "$1" \
+        '[.. | objects | select((.marks // []) | index($m))] | length > 0' \
+        >/dev/null 2>&1
+}
+
+# Mark the window matching the first of $2's "|"-separated criteria to hit.
+# i3 does the matching, so these stay plain criteria strings and this never
+# has to parse them.
+mark_window() {
+    local mark="$1" alt
+    for alt in ${(s.|.)2}; do
+        i3-msg -q "[$alt] mark --add $mark" >/dev/null 2>&1
+        mark_exists "$mark" && return 0
+    done
+    return 1
+}
+
+clear_marks() {
+    local m
+    for m in $GRID_MARK; do
+        i3-msg -q "[con_mark=\"^${m}\$\"] unmark $m" >/dev/null 2>&1
+    done
+}
+
+# Only for the interrupted case: pull anything still sitting on $PARK back.
+# Never call this on the happy path -- moving a window to the workspace it is
+# already on re-parents it to the workspace root and would undo the grid.
+rescue_parked() {
+    local m
+    for m in $GRID_MARK; do
+        i3-msg -q "[con_mark=\"^${m}\$\"] move container to workspace number $WS" \
+            >/dev/null 2>&1
+    done
+}
+
+# Position of the leaf carrying mark $1 among ws $WS's leaves, left to right.
+mark_index() {
+    i3-msg -t get_tree | jq -r --arg ws "$WS" --arg m "$1" '
+      [ .. | objects | select(.type=="workspace" and .name==$ws) ] | .[0] as $w |
+      ( [ $w | .. | objects | select(.window != null) ]
+        | to_entries
+        | map(select((.value.marks // []) | index($m)))
+        | .[0].key ) // -1'
+}
+
+# The grid is right when our four leaves appear in build order and sit in
+# exactly two vertical pairs. Leaves that are not ours are ignored, so an
+# unrelated window parked on the workspace does not read as failure.
+grid_ok() {
+    i3-msg -t get_tree | jq -e --arg ws "$WS" \
+        --arg a "$GRID_MARK[1]" --arg b "$GRID_MARK[2]" \
+        --arg c "$GRID_MARK[3]" --arg d "$GRID_MARK[4]" '
+      [ .. | objects | select(.type=="workspace" and .name==$ws) ] | .[0] as $w |
+      ( [ $w | .. | objects | select(.window != null)
+          | (((.marks // []) | map(select(startswith("_grid_"))))[0]) ]
+        | map(select(. != null)) ) as $leaves |
+      ( [ $w | .. | objects
+          | select(.layout == "splitv"
+                   and ((.nodes // []) | length == 2)
+                   and ((.nodes // []) | all(.window != null))) ] | length ) as $pairs |
+      ($leaves == [$a, $b, $c, $d]) and ($pairs == 2)' >/dev/null 2>&1
+}
+
+do_regrid() {
+    local -i i t cur guard
+    local -a missing=()
+    local strays
+
+    # Preflight. Nothing moves until all four are accounted for: a partial
+    # run is worse than no run, because the corner-building steps would fold
+    # whatever is left into a single column.
+    for (( i = 1; i <= 4; i++ )); do
+        mark_window "$GRID_MARK[$i]" "$GRID_CRIT[$i]" || missing+=("$GRID_NAME[$i]")
+    done
+    if (( $#missing )); then
+        clear_marks
+        print -u2 "$SELF: not regridding -- no window for: ${(j:, :)missing}"
+        print -u2 "$SELF: start them and try again; nothing was changed"
+        return 1
+    fi
+
+    strays="$(i3-msg -t get_tree | jq -r --arg ws "$WS" '
+      [ .. | objects | select(.type=="workspace" and .name==$ws) ] | .[0] as $w |
+      [ $w | .. | objects | select(.window != null)
+        | select((((.marks // []) | map(select(startswith("_grid_")))) | length) == 0) ]
+      | length')"
+    if (( ${strays:-0} > 0 )); then
+        print -u2 "$SELF: note: $strays other window(s) on ws$WS; the grid builds around them"
+    fi
+
+    # Flatten by parking everything off the workspace and bringing it back.
+    # The containers the windows leave behind are destroyed with them, so this
+    # starts from a flat row however tangled the workspace was -- tabbed,
+    # stacked, deeply nested or spread across other workspaces all converge
+    # here, which is what makes this safe to run without looking first.
+    for (( i = 1; i <= 4; i++ )); do
+        i3-msg -q "[con_mark=\"^$GRID_MARK[$i]\$\"] move container to workspace number $PARK"
+    done
+    for (( i = 1; i <= 4; i++ )); do
+        i3-msg -q "[con_mark=\"^$GRID_MARK[$i]\$\"] move container to workspace number $WS"
+    done
+
+    # An emptied workspace keeps the orientation it had, so say so explicitly.
+    i3-msg -q "[con_mark=\"^$GRID_MARK[1]\$\"] focus"
+    i3-msg -q 'layout splith'
+
+    # Sort the row into build order by swapping leftwards. The guard is only
+    # a stop against an unforeseen tree shape pinning a window in place.
+    for (( t = 1; t <= 4; t++ )); do
+        guard=0
+        while (( guard++ < 12 )); do
+            cur=$(mark_index "$GRID_MARK[$t]")
+            (( cur < 0 || cur <= t - 1 )) && break
+            i3-msg -q "[con_mark=\"^$GRID_MARK[$t]\$\"] focus"
+            i3-msg -q 'move left'
+        done
+    done
+
+    # Build the columns. `split v` wraps the top window of a column in a
+    # vertical container; moving its partner left then ENTERS that container
+    # and lands below it, rather than swapping past it. That asymmetry is the
+    # whole trick -- building rows instead collapses into one stack.
+    i3-msg -q "[con_mark=\"^$GRID_MARK[1]\$\"] focus"; i3-msg -q 'split v'
+    i3-msg -q "[con_mark=\"^$GRID_MARK[2]\$\"] focus"; i3-msg -q 'move left'
+    i3-msg -q "[con_mark=\"^$GRID_MARK[3]\$\"] focus"; i3-msg -q 'split v'
+    i3-msg -q "[con_mark=\"^$GRID_MARK[4]\$\"] focus"; i3-msg -q 'move left'
+}
+
+if (( regrid )); then
+    local regrid_prev
+    regrid_prev="$(i3-msg -t get_workspaces | jq -r '.[] | select(.focused) | .name')"
+
+    # Only for an interrupted run: leaving windows stranded on $PARK would
+    # hide them completely. `exec` below skips EXIT traps, so the happy path
+    # unmarks explicitly rather than relying on one.
+    trap 'rescue_parked; clear_marks; exit 1' INT TERM
+
+    i3-msg -q "workspace --no-auto-back-and-forth $WS"
+    if ! do_regrid; then
+        [[ -n "$regrid_prev" && "$regrid_prev" != "$WS" ]] &&
+            i3-msg -q "workspace --no-auto-back-and-forth $regrid_prev"
+        exit 1
+    fi
+
+    if grid_ok; then
+        print "$SELF: ws$WS regridded"
+    else
+        print -u2 "$SELF: regrid ran but the result is not the expected 2x2"
+    fi
+    clear_marks
+    exec "${0:h}/monitor-output"
+fi
+
+# ------------------------------------------------------ login path from here
 
 if [[ ! -r "$LAYOUT" ]]; then
     print -u2 "${0:t}: layout not readable: $LAYOUT"
