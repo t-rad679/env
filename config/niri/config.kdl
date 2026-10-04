@@ -124,6 +124,15 @@ binds {
 
     Mod+C hotkey-overlay-title="Control centre" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
 
+    // $mod+grave in i3: the dropdown terminal. One kitty that drops from the
+    // top edge and hides again on the same key. Under i3 this is tdrop
+    // wrapping an ordinary window, with a flock around it to stop two presses
+    // racing into two dropdowns; here it is kitty's own quick-access kitten,
+    // which is a wlr-layer-shell surface (so niri never tiles it) and which
+    // serialises itself through kitty's single-instance socket (so no lock).
+    // Geometry and behaviour: config/kitty/quick-access-terminal.conf.
+    Mod+Grave hotkey-overlay-title="Dropdown terminal" { spawn "kitten" "quick-access-terminal"; }
+
     // Super+Alt+L is niri's suggested lock bind; the i3 config has no lock key
     // at all, so there is no habit to preserve.
     Super+Alt+L hotkey-overlay-title="Lock the screen" { spawn "noctalia" "msg" "session" "lock"; }

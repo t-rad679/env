@@ -51,6 +51,15 @@ link_path "$ENV_DIR/machines/$MACHINE_ROLE/niri/role.kdl" "$HOME/.config/niri/ro
 # kitty terminal config (font, etc).
 link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" || rc=1
 
+# The dropdown terminal's own config, read by `kitten quick-access-terminal`
+# (bound to Mod+grave in the niri config -- it is the Wayland replacement for
+# the tdrop dropdown i3 binds to the same key). A separate file rather than a
+# section of kitty.conf because the kitten looks for exactly this name, and it
+# is linked on both roles even though only the laptop runs niri today: it is
+# inert unless something invokes the kitten.
+link_path "$ENV_DIR/config/kitty/quick-access-terminal.conf" \
+    "$HOME/.config/kitty/quick-access-terminal.conf" || rc=1
+
 # ssh client config: host aliases only (e.g. `ssh tradical@deepthought`). A
 # file link, never the whole ~/.ssh directory -- keys, known_hosts and agent
 # sockets are per-machine and must not end up in the repo. ~/.ssh itself is
