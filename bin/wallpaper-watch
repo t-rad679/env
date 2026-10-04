@@ -1,0 +1,68 @@
+#!/usr/bin/zsh
+
+# Repaint the root wallpaper every time the monitor layout changes.
+#
+# Why this exists: X *tiles* the root background pixmap when the pixmap is
+# smaller than the screen. bin/wallpaper sizes its pixmap for the layout that
+# is live when it runs, so a pixmap painted while undocked (2560x1600) is
+# repeated across the docked 8960x2160 screen -- the wallpaper visibly
+# duplicates on the external monitors instead of filling them. Nothing rescales
+# it later; it stays tiled until something repaints.
+#
+# The existing repaint triggers do not cover every case:
+#   * i3's `exec_always` (config/i3/conf.d/autostart.conf) only fires at login
+#     and on $mod+Shift+r.
+#   * machines/laptop/autorandr/postswitch only fires when autorandr actually
+#     switches profiles. autorandr skips its hooks when the matching profile is
+#     already applied (the same hazard machines/laptop/bin/monitor-output
+#     documents), and autorandr.service has been observed dying outright with
+#     an unhandled ProcessLookupError mid-scan, taking the hooks with it.
+#
+# i3 sees the RandR change itself, regardless of what autorandr decided, and
+# publishes an `output` IPC event once it has processed it -- i.e. after the X
+# screen has already been resized, which is exactly when feh needs to run. So
+# subscribe to that and repaint.
+#
+# Started from config/i3/conf.d/autostart.conf with `exec_always`; the flock
+# below keeps $mod+Shift+r from stacking up a second watcher.
+
+set -u
+
+local -r WALLPAPER="${0:A:h}/wallpaper"
+local -r LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-watch.lock"
+
+# Single instance. i3 does not kill its exec_always children on restart, so
+# without this every $mod+Shift+r would leave another watcher behind. The fd
+# is held for the life of the process and released when it exits.
+exec 9>"$LOCK" || exit 1
+flock -n 9 || exit 0
+
+# Take the subscriber down with us, rather than leaving an i3-msg behind to be
+# reaped by SIGPIPE at some arbitrary later event. The subscriber is killed by
+# pid rather than with `kill 0`, which would signal the whole process group --
+# fine under i3, but it would take the surrounding shell down when the script
+# is run by hand.
+local -i SUB=0
+cleanup() {
+    (( SUB )) && kill $SUB 2>/dev/null
+    exit 0
+}
+trap cleanup INT TERM HUP
+
+# Outer loop: i3 drops its IPC clients when it restarts in place, which ends
+# the subscription. Reconnect instead of dying, so the watcher outlives a
+# restart (and the new exec_always instance is the one that exits, above).
+#
+# A coproc, not a pipeline and not a process substitution: a pipeline would put
+# the reader in a subshell where $SUB is unreachable, and zsh (unlike bash)
+# does not publish a process substitution's pid in $!. coproc does, and the
+# next iteration's coproc replaces this one's fds.
+while true; do
+    coproc i3-msg -t subscribe -m '["output"]' 2>/dev/null
+    SUB=$!
+    while read -r _event <&p; do
+        "$WALLPAPER"
+    done
+    SUB=0
+    sleep 2
+done

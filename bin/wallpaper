@@ -10,10 +10,17 @@
 # ~/.fehbg restore script: the wallpaper is set from i3's autostart and from
 # the autorandr hook, so nothing ever sources it.
 #
-# Called from config/i3/conf.d/autostart.conf at login and on i3 restart, and
-# from machines/laptop/autorandr/postswitch after every dock/undock, because a
-# resolution change leaves the old root pixmap unscaled. Safe to run by hand
-# (it is on PATH via config/zsh/env/path.zsh) and safe to run repeatedly.
+# The pixmap feh paints is sized for the layout that is live right now, and X
+# *tiles* a root pixmap smaller than the screen -- so a wallpaper painted while
+# undocked is repeated across the screen once the externals come back, and
+# stays that way until something repaints. Hence three callers, none of which
+# covers every case on its own:
+#   * config/i3/conf.d/autostart.conf, at login and on i3 restart.
+#   * bin/wallpaper-watch, on i3's `output` event, i.e. every layout change.
+#   * machines/laptop/autorandr/postswitch, after a dock/undock that autorandr
+#     actually switched profiles for.
+# Safe to run by hand (it is on PATH via config/zsh/env/path.zsh) and safe to
+# run repeatedly.
 
 set -u
 
