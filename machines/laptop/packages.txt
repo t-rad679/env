@@ -20,4 +20,7 @@ autorandr
 brightnessctl
 
 obs-studio
+picard
+beets
+jetbrains-toolbox
 
