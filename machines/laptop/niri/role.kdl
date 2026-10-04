@@ -44,3 +44,74 @@ binds {
     // "fix my displays" button, same role as before.
     XF86Display { spawn "noctalia" "msg" "settings-open"; }
 }
+
+// The chat workspace: Messenger, Messages, Signal and Discord in a 2x2 on
+// the right-hand dock monitor, the niri half of what i3 gets from
+// machines/laptop/i3/autostart.conf + i3/ws3-chat.json + bin/chat-grid.
+//
+// Named, not numbered, and that is the whole reason this works. niri
+// workspaces are dynamic and per-monitor, so an index means "the Nth
+// workspace on the FOCUSED monitor" -- `focus-workspace 2` lands somewhere
+// different depending on where you were standing. A name is global: it
+// resolves to this workspace on this monitor from anywhere, which is what
+// lets the window rules below and bin/chat-grid-niri both address it without
+// caring what is focused. (config/niri/config.kdl keeps Mod+1..9 on indices
+// deliberately -- per-monitor is the right behaviour for a bare number.)
+//
+// A workspace declared here is also persistent: it exists even when empty,
+// so the rules below always have somewhere to put things.
+//
+// open-on-output takes the EDID make/model/serial, not DP-8. Connector
+// numbers on this laptop are NOT stable -- the dock renumbers its
+// DisplayPorts between boots and even across a re-enumeration while logged
+// in, which is the same hazard machines/laptop/autorandr/settings.ini sets
+// match-edid=1 for and machines/laptop/bin/monitor-output resolves by hand
+// under X. niri matches outputs this way natively, so here it costs one
+// string and no helper script. The string is the whole of what `niri msg
+// outputs` prints in quotes for the panel. When the monitor is absent niri
+// falls back to the first output rather than failing, so an undocked session
+// still has a chat workspace.
+workspace "chat" {
+    open-on-output "Samsung Electric Company U32J59x HCJT503124"
+}
+
+// Route the four chat apps to it however they are started, the counterpart
+// of the `assign` rules in machines/laptop/i3/autostart.conf. The rules fire
+// on OPEN only, so a window that is already up and sitting elsewhere is not
+// dragged back -- bin/chat-grid-niri does that part explicitly.
+//
+// Two app_id spellings each for the Chrome apps: under Wayland google-chrome
+// ignores --class and builds app_id from the --app URL plus the profile,
+// while under XWayland it honours --class and reports the same
+// "messenger-chrome" / "messages-chrome" the i3 rules match. Both are listed
+// so the routing survives commenting out ELECTRON_OZONE_PLATFORM_HINT in
+// config/niri/config.kdl, which that file documents as the thing to try when
+// an Electron app misbehaves. Keep these in step with GRID_APPID in
+// machines/laptop/bin/chat-grid-niri.
+//
+// Signal and Discord report lowercase app_ids, not the capitalised names
+// their .desktop files use -- same as their X11 classes.
+window-rule {
+    match app-id=r#"^chrome-www\.messenger\.com__-Default$"#
+    match app-id=r#"^messenger-chrome$"#
+    match app-id=r#"^chrome-messages\.google\.com__web-Default$"#
+    match app-id=r#"^messages-chrome$"#
+    match app-id=r#"^signal$"#
+    match app-id=r#"^discord$"#
+    open-on-workspace "chat"
+}
+
+// Build the 2x2 at login. The window rules above get the apps onto the
+// workspace; niri has no saved-layout mechanism, so their arrangement on it
+// has to be done imperatively afterwards -- see bin/chat-grid-niri.
+//
+// Spelled out in full rather than relying on PATH: niri inherits the
+// systemd user environment, which has not sourced the zsh env scripts that
+// put machines/$MACHINE_ROLE/bin on PATH.
+//
+// spawn-sh-at-startup, not spawn-at-startup, purely to get $HOME expanded.
+// spawn-at-startup execs the command directly -- no shell, so neither `~`
+// nor `$HOME` is expanded in its arguments and the only way to name the
+// script would be an absolute path with a username in it. The two machines
+// have different usernames, so nothing in this repo may do that.
+spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/chat-grid-niri"

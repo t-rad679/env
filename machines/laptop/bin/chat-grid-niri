@@ -1,0 +1,295 @@
+#!/usr/bin/zsh
+
+# Build the niri chat grid: Messenger, Messages, Signal and Discord in a 2x2
+# on the "chat" workspace, which machines/laptop/niri/role.kdl pins to the
+# right-hand dock monitor.
+#
+# Usage: chat-grid-niri           launch whatever is missing, then build the
+#                                 grid (niri's spawn-at-startup runs this at
+#                                 login); a no-op if all four are already up
+#        chat-grid-niri --regrid  rebuild the 2x2 from the windows already
+#                                 open, launching nothing
+#
+#     Messenger | Messages
+#     ----------+---------
+#     Signal    | Discord
+#
+# The niri counterpart of machines/laptop/bin/chat-grid, which does the same
+# job under i3. The division of labour is the same in both sessions -- config
+# decides WHICH workspace the apps land on, this script decides where they sit
+# ON it -- but the halves are spelled differently enough to be worth laying
+# out side by side:
+#
+#   i3                                  niri
+#   assign [class=...] $ws3             window-rule { match app-id=...
+#     in i3/autostart.conf                open-on-workspace "chat" }
+#                                         in niri/role.kdl
+#   ws3, pinned to a connector that      workspace "chat", pinned by EDID
+#     monitor-output resolves by EDID      make/model/serial in role.kdl --
+#     into an X resource at run time       niri matches outputs that way
+#                                          natively, so no helper is needed
+#   grid from a saved layout             grid built from the live windows
+#     (i3/ws3-chat.json) appended          every run; niri has no
+#     BEFORE the apps start                append_layout equivalent
+#
+# That last row is why this script is much shorter than its i3 twin. i3's
+# placeholders are one-shot -- they are spent the moment they swallow a window
+# -- so chat-grid needs a separate --regrid path that ignores them and shuffles
+# live windows instead, plus a bail-out so a second run cannot append a second
+# set of placeholders and launch duplicate apps. Here there is nothing to
+# spend: arranging live windows is the only mechanism, so the login path and
+# --regrid are the same few lines, and re-running is harmless.
+#
+# Matching on app_id, with two spellings each for the Chrome apps:
+# google-chrome under Wayland ignores --class and derives app_id from the
+# --app URL plus the profile ("chrome-www.messenger.com__-Default"), while
+# under XWayland it honours --class and reports "messenger-chrome" like it
+# does under i3. niri runs these natively today (ELECTRON_OZONE_PLATFORM_HINT
+# is set in config/niri/config.kdl), but that line is documented as the thing
+# to comment out when an Electron app misbehaves -- so both spellings are
+# matched and the grid survives the fallback. Keep the patterns in step with
+# the window rules in machines/laptop/niri/role.kdl.
+#
+# Why Messenger and Messages each get their own --user-data-dir is unchanged
+# from the i3 script, and the reasoning there is the full story: Chrome's
+# process singleton is per user-data-dir, not per profile, so a shared dir
+# makes the two race at every cold login. Launcher output goes to the journal
+# (`journalctl --user -t chat-grid`) under the same identifier for the same
+# reason -- discarding it is what hid that race for as long as it did.
+
+set -u
+
+local -r SELF="${0:t}"
+local -r WS="chat"
+local -r MESSENGER_UDD="$HOME/.config/chrome-messenger"
+local -r MESSAGES_UDD="$HOME/.config/chrome-messages"
+
+# How long to wait for a freshly launched app to map its window. Signal and
+# Discord are slow on a cold start, and Discord updates itself before it shows
+# anything, so this is generous on purpose: the cost of waiting too long is a
+# script that takes a while at login, the cost of waiting too little is a grid
+# built around a window that has not arrived.
+local -ri WINDOW_TIMEOUT=120
+
+# The grid, in the order the columns are built left to right: two parallel
+# arrays, a display name and the app_id pattern that finds the window.
+# Entries 2 and 4 are then folded into the columns of entries 1 and 3, which
+# is what turns the row of four into the 2x2 above.
+local -ra GRID_NAME=(Messenger Signal Messages Discord)
+local -ra GRID_APPID=(
+    '^(chrome-www\.messenger\.com__-Default|messenger-chrome)$'
+    '^signal$'
+    '^(chrome-messages\.google\.com__web-Default|messages-chrome)$'
+    '^discord$'
+)
+
+local regrid=0
+case "${1:-}" in
+    --regrid) regrid=1 ;;
+    "")       ;;
+    *)        print -u2 "usage: $SELF [--regrid]"; exit 2 ;;
+esac
+if (( $# > 1 )); then
+    print -u2 "usage: $SELF [--regrid]"
+    exit 2
+fi
+
+if ! niri msg -j version >/dev/null 2>&1; then
+    print -u2 "$SELF: niri is not running"
+    exit 1
+fi
+
+# ------------------------------------------------------------------ helpers
+
+# Id of the TILED window whose app_id matches $1, or empty. First match wins;
+# the patterns above are anchored, so a second match would mean two copies of
+# the same app and either will do.
+#
+# Floating windows are skipped, and that is not a refinement -- it is what
+# makes the Discord row work. Discord checks for updates before it opens
+# anything useful, and its updater is a 300x350 splash carrying the same
+# "discord" app_id as the real window. Without this filter the wait below is
+# satisfied by the splash, the grid is built around it, and the splash then
+# closes and takes its quarter of the grid with it. Filtering on the tiled
+# flag rather than on the title keeps this from being a Discord-specific
+# special case: the grid is made of tiled windows by definition, so a
+# floating splash from any of the four is simply not a candidate, and the
+# wait loop keeps waiting until the real window maps.
+window_id() {
+    niri msg -j windows |
+        jq -r --arg re "$1" '
+            map(select(((.app_id // "") | test($re)) and .is_floating == false))
+            | .[0].id // empty'
+}
+
+# Start a detached app, with its output in the journal.
+#
+# setsid, not a bare `&!`: disowning only detaches the job from this shell, it
+# leaves the child in the same process group, so anything that signals the
+# group when this script exits -- a terminal, a tool harness -- takes the apps
+# with it. systemd-cat puts stdout and stderr in the journal and execs the
+# program rather than staying in the middle, so it costs no extra process.
+launch() {
+    setsid -f systemd-cat --identifier=chat-grid "$@"
+}
+
+# ------------------------------------------------------------- what is up
+
+local -a missing_idx=()
+local -i i
+for (( i = 1; i <= 4; i++ )); do
+    [[ -z "$(window_id "$GRID_APPID[$i]")" ]] && missing_idx+=($i)
+done
+
+if (( regrid )); then
+    if (( $#missing_idx )); then
+        local -a missing_name=()
+        for i in $missing_idx; do missing_name+=("$GRID_NAME[$i]") done
+        print -u2 "$SELF: not regridding -- no window for: ${(j:, :)missing_name}"
+        print -u2 "$SELF: start them (or run $SELF with no arguments) and try again"
+        exit 1
+    fi
+elif (( $#missing_idx == 0 )); then
+    # Same bail-out as the i3 script, for the same reason: this is run at
+    # login but is also the kind of thing you run by hand, and silently
+    # rearranging a workspace someone has deliberately laid out is rude.
+    print "$SELF: all four chat windows are already up; use --regrid to rebuild the 2x2"
+    exit 0
+else
+    for i in $missing_idx; do
+        case "$GRID_NAME[$i]" in
+            Messenger)
+                launch google-chrome-stable --user-data-dir="$MESSENGER_UDD" \
+                    --class=messenger-chrome --no-first-run \
+                    --no-default-browser-check --app=https://www.messenger.com/ ;;
+            Messages)
+                launch google-chrome-stable --user-data-dir="$MESSAGES_UDD" \
+                    --class=messages-chrome --no-first-run \
+                    --no-default-browser-check --app=https://messages.google.com/web ;;
+            Signal)  launch signal-desktop ;;
+            Discord) launch discord ;;
+        esac
+    done
+fi
+
+# ------------------------------------------------------- wait for them all
+
+local -a win=()
+local -i waited=0
+while true; do
+    win=()
+    for (( i = 1; i <= 4; i++ )); do
+        win+=("$(window_id "$GRID_APPID[$i]")")
+    done
+    local -i have=0
+    for i in {1..4}; do [[ -n "$win[$i]" ]] && (( have++ )) done
+    (( have == 4 )) && break
+
+    if (( waited >= WINDOW_TIMEOUT )); then
+        local -a late=()
+        for i in {1..4}; do [[ -z "$win[$i]" ]] && late+=("$GRID_NAME[$i]") done
+        print -u2 "$SELF: gave up after ${WINDOW_TIMEOUT}s waiting for: ${(j:, :)late}"
+        print -u2 "$SELF: check \`journalctl --user -t chat-grid\`; nothing was rearranged"
+        exit 1
+    fi
+    sleep 1
+    (( waited++ ))
+done
+
+# --------------------------------------------------------------- the grid
+
+# Focus moves from window to window below, so remember where it started. At
+# login there is often nothing focused yet, hence the // empty.
+local focus_before=""
+focus_before="$(niri msg -j focused-window | jq -r '.id // empty')"
+
+# The window rules in role.kdl only fire when a window OPENS, so a window that
+# was already running somewhere else has to be fetched. --focus false keeps
+# this from dragging the view along with it.
+for i in {1..4}; do
+    niri msg action move-window-to-workspace --window-id "$win[$i]" --focus false "$WS" \
+        || exit 1
+done
+
+# Flatten first: every window in its own column. A fresh login already looks
+# like this, but --regrid may be starting from columns someone stacked by
+# hand, and the column-building below assumes one window per column.
+# expel-window-from-column has no --id and takes the BOTTOM window of the
+# FOCUSED column, so this focuses into each fat column and peels it. Each pass
+# moves exactly one window out, so four windows can need at most three.
+local -i guard=0 flat=0
+local fat=""
+while (( guard++ < 8 )); do
+    fat="$(niri msg -j windows | jq -r --argjson ids "[${(j:,:)win}]" '
+        map(select(.id as $i | $ids | index($i)))
+        | group_by(.layout.pos_in_scrolling_layout[0])
+        | map(select(length > 1))
+        | .[0][0].id // empty')"
+    [[ -z "$fat" ]] && { flat=1; break }
+    niri msg action focus-window --id "$fat" || exit 1
+    niri msg action expel-window-from-column || exit 1
+done
+if (( ! flat )); then
+    print -u2 "$SELF: could not flatten the $WS workspace into one window per column"
+    exit 1
+fi
+
+# Order the four columns left to right in build order.
+for i in {1..4}; do
+    niri msg action focus-window --id "$win[$i]" || exit 1
+    niri msg action move-column-to-index "$i" || exit 1
+done
+
+# Fold the row of four into two columns of two. Signal joins Messenger first,
+# which shifts Messages and Discord one column left -- so Discord is in column
+# 3 by the time it is folded, and "left" is Messages' column. Doing these in
+# the other order would put Discord under Signal.
+niri msg action consume-or-expel-window-left --id "$win[2]" || exit 1
+niri msg action consume-or-expel-window-left --id "$win[4]" || exit 1
+
+# Hand the heights back to niri. A window that has ever been alone in a
+# column carries that column's full height as an EXPLICIT height, and
+# consuming it into another column keeps it -- so folding two full-height
+# windows together gives a column twice the height of the screen that has to
+# be scrolled, rather than two halves. Fresh windows from a cold login are
+# still on automatic and do not need this; a --regrid of windows that have
+# been dragged around always does, which is exactly the case that looks
+# broken without it.
+for i in {1..4}; do
+    niri msg action reset-window-height --id "$win[$i]" || exit 1
+done
+
+if [[ -n "$focus_before" ]]; then
+    niri msg action focus-window --id "$focus_before" 2>/dev/null
+fi
+
+# Confirm rather than assume: two columns of two, in build order. Reported
+# instead of fixed -- there is nothing sensible to retry, and a wrong grid is
+# one keystroke away from being dragged right by hand.
+#
+# Compare the POSITIONS, not the ids in position order. Sorting the four ids
+# by position and checking the sequence looks equivalent and is not: a single
+# column of four sorts to exactly the same list as the 2x2, so that check
+# passes on the one layout most likely to come out of a bug here.
+#
+# Polled rather than read once, because niri applies these actions
+# asynchronously over its IPC socket and a query issued immediately after the
+# last one can still see the tree from before the relayout -- observed while
+# testing this script. On the happy path the first read already matches.
+local got="" want="[[1,1],[1,2],[2,1],[2,2]]"
+local -i settle=0
+while (( settle++ < 15 )); do
+    got="$(niri msg -j windows | jq -c --argjson ids "[${(j:,:)win}]" '
+        map(select(.id as $i | $ids | index($i)))
+        | sort_by(.id as $i | $ids | index($i))
+        | map(.layout.pos_in_scrolling_layout)')"
+    [[ "$got" == "$want" ]] && break
+    sleep 0.2
+done
+if [[ "$got" == "$want" ]]; then
+    print "$SELF: $WS workspace grid up (Messenger/Signal | Messages/Discord)"
+else
+    print -u2 "$SELF: grid built but the result is not the expected 2x2"
+    print -u2 "$SELF: wanted $want, got $got"
+    exit 1
+fi
