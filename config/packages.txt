@@ -73,3 +73,10 @@ dunst
 # emoji codepoints and every emoji renders as a box (tofu): Monarch Money's
 # category icons, Discord/Slack reactions, emoji in web pages.
 noto-fonts-emoji
+
+# WM-independent dropdown window creator: shows and hides a single window on a
+# keypress, Guake-style. Drives the dropdown terminal bound to $mod+grave in
+# config/i3/conf.d/baseconfig.conf, which is also where the flags are
+# explained. Pulls in xdotool and xorg-xwininfo; its -m (monitor-aware) flag
+# needs xorg-xrandr, already above.
+tdrop
