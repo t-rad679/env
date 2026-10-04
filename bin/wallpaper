@@ -6,7 +6,7 @@
 #
 # feh is built with xinerama here, so a single --bg-fill scales the image to
 # each output separately -- which is what the mixed-DPI laptop dock needs
-# (2560x1600 eDP + 3840x2160 + 1920x1080). --no-fehbg skips writing the
+# (a 2560x1600 eDP plus two 3840x2160 externals). --no-fehbg skips writing the
 # ~/.fehbg restore script: the wallpaper is set from i3's autostart and from
 # the autorandr hook, so nothing ever sources it.
 #
