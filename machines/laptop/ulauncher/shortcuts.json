@@ -58,5 +58,25 @@
         "is_default_search": false,
         "run_without_argument": true,
         "added": 1790208477.958737
+    },
+    "ef4009af-aa59-45d6-bb4a-e2a77da93cf3": {
+        "id": "ef4009af-aa59-45d6-bb4a-e2a77da93cf3",
+        "name": "OrcaSlicer",
+        "keyword": "orca",
+        "cmd": "/usr/bin/flatpak run com.orcaslicer.OrcaSlicer",
+        "icon": "/var/lib/flatpak/exports/share/icons/hicolor/128x128/apps/com.orcaslicer.OrcaSlicer.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1790454506.6795712
+    },
+    "fe925af8-e20c-4857-bca9-f9d438f17b8a": {
+        "id": "fe925af8-e20c-4857-bca9-f9d438f17b8a",
+        "name": "AFFiNE",
+        "keyword": "affine",
+        "cmd": "/usr/bin/affine",
+        "icon": "/usr/share/icons/hicolor/512x512/apps/affine.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1791057826.9604797
     }
 }

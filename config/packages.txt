@@ -57,6 +57,13 @@ realtime-privileges
 # without building a bootable updater.
 fwupd
 
+# Flatpak runtime. Here for OrcaSlicer (com.orcaslicer.OrcaSlicer), which is
+# installed as a flatpak rather than from the AUR -- see the `orca` entry in
+# machines/laptop/ulauncher/shortcuts.json and the floating rules in
+# config/i3/conf.d/orcaslicer.conf. The flatpak itself is not provisioned by
+# this repo; `flatpak install flathub com.orcaslicer.OrcaSlicer` is manual.
+flatpak
+
 # Interactive screenshot tool: crop, annotate, then copy or save.
 # Bound to Print (F11) in config/i3/conf.d/fnrow.conf.
 flameshot
