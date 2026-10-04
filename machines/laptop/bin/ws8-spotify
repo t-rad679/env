@@ -3,11 +3,17 @@
 # Workspace 8 on the laptop: Spotify on the left and a kitty directly to its
 # right. laptop.conf pins ws8 to the built-in panel (eDP).
 #
-# Usage: ws8-spotify [--no-focus]
+# Usage: ws8-spotify [--term] [--no-focus]
 #
 #   Starts whichever of the two windows is missing, then focuses Spotify (which
 #   switches to ws8). If both are already up, it only focuses. --no-focus is
 #   for the login autostart.
+#
+#   --term is the terminal half on its own: it starts the kitty only if it is
+#   missing, placed beside Spotify exactly as at login, and focuses the terminal
+#   rather than Spotify. It never launches Spotify. This is what the "Spotify
+#   Terminal" Ulauncher entry runs, for when the terminal has been closed but
+#   Spotify is still up.
 #
 # Why a script instead of i3 `assign`s: the terminal is placed relative to
 # Spotify, not just onto the workspace. Spotify also sets WM_CLASS only after
@@ -30,10 +36,17 @@ local -r TERM_PPT="38"
 # Spotify can be slow on a cold login; give each window 30s to map.
 local -ri TRIES=60
 
-local focus=1
-if [[ "${1:-}" == "--no-focus" ]]; then
-    focus=0
-fi
+local -r usage="usage: ${0:t} [--term] [--no-focus]"
+
+local -i focus=1 term_only=0
+while (( $# )); do
+    case "$1" in
+        --term)     term_only=1 ;;
+        --no-focus) focus=0 ;;
+        *)          print -u2 "$usage"; exit 2 ;;
+    esac
+    shift
+done
 
 has_mark() {
     [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$1" \
@@ -80,6 +93,32 @@ start_term() {
     adopt_window "$TERM_CLASS" "$TERM_MARK"
 }
 
+# `move container to mark` puts the terminal right after Spotify in Spotify's
+# split, which is to its right because ws8 on a landscape panel splits
+# horizontally. The resize then sets the terminal against its sibling, which is
+# exactly the golden ratio only when the two of them are the whole split (as at
+# login).
+#
+# Under --term Spotify may not be running, and then there is no mark to move
+# to. adopt_window has already put the terminal on ws8, so leave it owning the
+# workspace until Spotify joins it.
+arrange_term() {
+    has_mark "$SPOTIFY_MARK" || return 0
+    i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $SPOTIFY_MARK, resize set width $TERM_PPT ppt"
+}
+
+# --term: the terminal half on its own, for relaunching just the kitty.
+if (( term_only )); then
+    if ! has_mark "$TERM_MARK"; then
+        start_term || exit 1
+        arrange_term || exit 1
+    fi
+    if (( focus )); then
+        i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] focus"
+    fi
+    exit 0
+fi
+
 # Only arrange when something was just started. Re-running this to jump to ws8
 # must not undo a layout you changed by hand.
 local -i started=0
@@ -93,12 +132,7 @@ if ! has_mark "$TERM_MARK"; then
 fi
 
 if (( started )); then
-    # `move container to mark` puts the terminal right after Spotify in
-    # Spotify's split, which is to its right because ws8 on a landscape panel
-    # splits horizontally. The resize then sets the terminal against its
-    # sibling, which is exactly the golden ratio only when the two of them are
-    # the whole split (as at login).
-    i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $SPOTIFY_MARK, resize set width $TERM_PPT ppt" || exit 1
+    arrange_term || exit 1
 fi
 
 if (( focus )); then

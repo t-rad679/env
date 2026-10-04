@@ -5,7 +5,7 @@
 # ratio. One script serves every such workspace; the profiles are the table in
 # the case statement below.
 #
-# Usage: chrome-workspace <profile> [--no-focus]
+# Usage: chrome-workspace <profile> [--term] [--no-focus]
 #
 #   profile     personal   -- "Personal Chrome", ws2 (pinned to the left monitor)
 #               weftworks  -- "WeftWorks Chrome", ws1 (pinned to the panel)
@@ -14,6 +14,12 @@
 #   switches to that workspace). If both are already up, it only focuses.
 #   --no-focus is for the login autostart, so starting them does not pull you
 #   off whatever workspace you land on.
+#
+#   --term is the terminal half on its own: it starts the kitty only if it is
+#   missing, placed beside Chrome exactly as at login, and focuses the terminal
+#   rather than Chrome. It never launches Chrome. This is what the "Personal
+#   Chrome Terminal" and "WeftWorks Chrome Terminal" Ulauncher entries run, for
+#   when a terminal has been closed but its browser is still up.
 #
 # Why a separate --user-data-dir per profile rather than --profile-directory:
 # Chrome's singleton is per user-data-dir, so a second profile inside the
@@ -36,7 +42,7 @@
 
 set -u
 
-local -r usage="usage: ${0:t} personal|weftworks [--no-focus]"
+local -r usage="usage: ${0:t} personal|weftworks [--term] [--no-focus]"
 
 local profile="${1:-}"
 case "$profile" in
@@ -71,13 +77,15 @@ local -r CHROME="google-chrome-stable"
 # Chrome can be slow on a cold login; give each window 30s to map.
 local -ri TRIES=60
 
-local focus=1
-if [[ "${1:-}" == "--no-focus" ]]; then
-    focus=0
-elif [[ -n "${1:-}" ]]; then
-    print -u2 "$usage"
-    exit 2
-fi
+local -i focus=1 term_only=0
+while (( $# )); do
+    case "$1" in
+        --term)     term_only=1 ;;
+        --no-focus) focus=0 ;;
+        *)          print -u2 "$usage"; exit 2 ;;
+    esac
+    shift
+done
 
 has_mark() {
     [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$1" \
@@ -140,6 +148,32 @@ start_term() {
     adopt_window "$TERM_CLASS" "$TERM_MARK"
 }
 
+# `move container to mark` puts the terminal right after Chrome in Chrome's
+# split -- to its right, since these workspaces split horizontally on a
+# landscape output. The resize then sets the terminal against its sibling, which
+# is exactly the golden ratio only when the two of them are the whole split (as
+# at login); a third window in that split gets a share of the remainder.
+#
+# Under --term Chrome may not be running, and then there is no mark to move to.
+# adopt_window has already put the terminal on the workspace, so leave it owning
+# it until Chrome joins it.
+arrange_term() {
+    has_mark "$MARK" || return 0
+    i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $MARK, resize set width $TERM_PPT ppt"
+}
+
+# --term: the terminal half on its own, for relaunching just the kitty.
+if (( term_only )); then
+    if ! has_mark "$TERM_MARK"; then
+        start_term || exit 1
+        arrange_term || exit 1
+    fi
+    if (( focus )); then
+        i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] focus"
+    fi
+    exit 0
+fi
+
 # Only arrange when something was just started: re-running this to jump to the
 # workspace must not undo a split you have since resized by hand.
 local -i started=0
@@ -153,13 +187,7 @@ if ! has_mark "$TERM_MARK"; then
 fi
 
 if (( started )); then
-    # `move container to mark` puts the terminal right after Chrome in Chrome's
-    # split -- to its right, since these workspaces split horizontally on a
-    # landscape output. The resize then sets the terminal against its sibling,
-    # which is exactly the golden ratio only when the two of them are the whole
-    # split (as at login); a third window in that split gets a share of the
-    # remainder.
-    i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $MARK, resize set width $TERM_PPT ppt" || exit 1
+    arrange_term || exit 1
 fi
 
 if (( focus )); then

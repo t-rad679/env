@@ -4,11 +4,17 @@
 # workspace 4 (which laptop.conf pins to the left monitor), with a kitty terminal
 # in the vault directly to its right, split at the golden ratio.
 #
-# Usage: obsidian-grimoire [--no-focus]
+# Usage: obsidian-grimoire [--term] [--no-focus]
 #
 #   Starts whichever of the two windows is missing, then focuses the Grimoire
 #   (which switches to ws4). If both are already up, it only focuses. --no-focus
 #   is for the login autostart, so starting them does not pull you off ws1.
+#
+#   --term is the terminal half on its own: it starts the kitty only if it is
+#   missing, placed beside the Grimoire exactly as at login, and focuses the
+#   terminal rather than the Grimoire. It never launches Obsidian. This is what
+#   the "Grimoire Terminal" Ulauncher entry runs, for when the terminal has been
+#   closed but the Grimoire is still up.
 #
 # Why a script instead of an i3 `assign`: Obsidian's window class is always
 # md.obsidian.Obsidian -- it ignores --class, --name and CHROME_DESKTOP
@@ -40,10 +46,17 @@ local -r TERM_PPT="38"
 # Electron can take a while on a cold login; give it 30s to map a window.
 local -ri TRIES=60
 
-local focus=1
-if [[ "${1:-}" == "--no-focus" ]]; then
-    focus=0
-fi
+local -r usage="usage: ${0:t} [--term] [--no-focus]"
+
+local -i focus=1 term_only=0
+while (( $# )); do
+    case "$1" in
+        --term)     term_only=1 ;;
+        --no-focus) focus=0 ;;
+        *)          print -u2 "$usage"; exit 2 ;;
+    esac
+    shift
+done
 
 has_mark() {
     [[ -n "$(i3-msg -t get_tree | jq -r --arg m "$1" \
@@ -123,6 +136,36 @@ start_term() {
     i3-msg -q "[id=$win] mark --add $TERM_MARK"
 }
 
+# `move container to mark` puts the terminal right after the Grimoire in the
+# Grimoire's split -- to its right, since ws4 on a landscape output splits
+# horizontally. The resize then sets the terminal against its sibling, which is
+# exactly the golden ratio only when the two of them are the whole split (as at
+# login); a third window in that split gets a share of the remainder.
+#
+# Under --term the Grimoire may not be running, and then there is no mark to
+# move to. start_term does not place the kitty itself (unlike the adopt_window
+# helpers in ws8-spotify and chrome-workspace), so send it to ws4 on its own,
+# where it holds the workspace until the Grimoire joins it.
+arrange_term() {
+    if has_mark "$MARK"; then
+        i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $MARK, resize set width $TERM_PPT ppt"
+    else
+        i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to workspace number $WS"
+    fi
+}
+
+# --term: the terminal half on its own, for relaunching just the kitty.
+if (( term_only )); then
+    if ! has_mark "$TERM_MARK"; then
+        start_term || exit 1
+        arrange_term || exit 1
+    fi
+    if (( focus )); then
+        i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] focus"
+    fi
+    exit 0
+fi
+
 # Only arrange when something was just started: re-running this to jump to the
 # Grimoire must not undo a split you have since resized by hand.
 local -i started=0
@@ -136,13 +179,7 @@ if ! has_mark "$TERM_MARK"; then
 fi
 
 if (( started )); then
-    # `move container to mark` puts the terminal right after the Grimoire in
-    # the Grimoire's split -- to its right, since ws4 on a landscape output
-    # splits horizontally. The resize then sets the terminal against its
-    # sibling, which is exactly the golden ratio only when the two of them are
-    # the whole split (as at login); a third window in that split gets a share
-    # of the remainder.
-    i3-msg -q "[con_mark=\"^${TERM_MARK}\$\"] move container to mark $MARK, resize set width $TERM_PPT ppt" || exit 1
+    arrange_term || exit 1
 fi
 
 if (( focus )); then

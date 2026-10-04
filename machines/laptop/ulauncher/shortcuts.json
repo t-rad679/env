@@ -78,5 +78,45 @@
         "is_default_search": false,
         "run_without_argument": true,
         "added": 1791057826.9604797
+    },
+    "3f1b8c2a-5d47-4e61-9a8b-2c6f0d73e514": {
+        "id": "3f1b8c2a-5d47-4e61-9a8b-2c6f0d73e514",
+        "name": "Grimoire Terminal",
+        "keyword": "grimterm",
+        "cmd": "$HOME/src/env/machines/laptop/bin/obsidian-grimoire --term",
+        "icon": "/usr/share/icons/hicolor/256x256/apps/kitty.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1791150445.0
+    },
+    "7c2e49d6-1a83-4bf0-85c7-9e41b2d6a037": {
+        "id": "7c2e49d6-1a83-4bf0-85c7-9e41b2d6a037",
+        "name": "Personal Chrome Terminal",
+        "keyword": "personalterm",
+        "cmd": "$HOME/src/env/machines/laptop/bin/chrome-workspace personal --term",
+        "icon": "/usr/share/icons/hicolor/256x256/apps/kitty.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1791150446.0
+    },
+    "a84d605b-3e92-4c17-b60d-5f8a1c94e7d2": {
+        "id": "a84d605b-3e92-4c17-b60d-5f8a1c94e7d2",
+        "name": "WeftWorks Chrome Terminal",
+        "keyword": "weftterm",
+        "cmd": "$HOME/src/env/machines/laptop/bin/chrome-workspace weftworks --term",
+        "icon": "/usr/share/icons/hicolor/256x256/apps/kitty.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1791150447.0
+    },
+    "d91f7e34-6b05-42a8-9c13-8e5720af6b91": {
+        "id": "d91f7e34-6b05-42a8-9c13-8e5720af6b91",
+        "name": "Spotify Terminal",
+        "keyword": "spotifyterm",
+        "cmd": "$HOME/src/env/machines/laptop/bin/ws8-spotify --term",
+        "icon": "/usr/share/icons/hicolor/256x256/apps/kitty.png",
+        "is_default_search": false,
+        "run_without_argument": true,
+        "added": 1791150448.0
     }
 }
