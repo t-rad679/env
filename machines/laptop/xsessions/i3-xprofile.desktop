@@ -1,0 +1,38 @@
+[Desktop Entry]
+# An i3 session entry that runs ~/.xprofile first -- see bin/i3-xsession for
+# why the stock /usr/share/xsessions/i3.desktop does not, and what breaks.
+#
+# Installed to /usr/local/share/xsessions/ by machines/laptop/init.zsh.
+# /usr/local/share comes first in the XDG_DATA_DIRS default
+# ("/usr/local/share:/usr/share", which is the literal default compiled into
+# noctalia-greeter), so the greeter picks it up with no extra configuration.
+#
+# Installed as a COPY, not the symlink-back-into-the-repo this repo uses
+# everywhere else. The greeter parses this file as the unprivileged `greeter`
+# user, and $HOME is drwx------ -- so a symlink into ~/src/env is unreadable
+# to it and the session would simply not be listed. Only the Exec target can
+# be a repo symlink, because that is run after authentication, as the user.
+# The cost is that editing this file needs init re-run to take effect.
+#
+# Name is deliberately NOT "i3". The greeter de-duplicates the session list by
+# Name=, and which of two same-named entries survives is not something the
+# listing reveals -- so shadowing the stock entry would be a coin flip between
+# the fixed session and the broken one. Verified with `noctalia-greeter
+# sessions`, which is also the way to check this file landed.
+#
+# No TryExec=. The greeter ignores it (verified), and a DM that honours it
+# would evaluate it as its own unprivileged greeter user, fail to stat the
+# symlink's target inside $HOME, and hide this entry for the wrong reason.
+#
+# Everything below mirrors the stock /usr/share/xsessions/i3.desktop -- same
+# Type, DesktopNames and X-LightDM-DesktopName -- so the session this starts
+# is identical to the stock one apart from the ~/.xprofile step. (DesktopNames
+# trips desktop-file-validate, which checks the *application* spec; it is the
+# standard key for session files and the stock i3 and niri entries both use it.)
+Name=i3 (xprofile)
+Comment=i3, with the ~/.xprofile login setup that greetd would otherwise skip
+Exec=/usr/local/bin/i3-xsession
+Type=XSession
+DesktopNames=i3
+X-LightDM-DesktopName=i3
+Keywords=tiling;wm;windowmanager;window;manager;

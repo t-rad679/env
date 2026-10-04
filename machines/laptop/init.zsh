@@ -120,4 +120,48 @@ else
         sudo systemctl enable greetd.service || return 1
         print "    enabled greetd -- takes effect at the next boot"
     fi
+
+    # --- the i3-with-xprofile session entry ------------------------------
+    #
+    # Picking the stock "i3" from the greeter starts an i3 that never sourced
+    # ~/.xprofile, because greetd runs X sessions with `startx <wm>` and
+    # startx reads ~/.xinitrc only when given no client. bin/i3-xsession is
+    # the wrapper that puts it back; see that file for everything it fixes.
+    #
+    # The wrapper is a symlink into the repo, so edits take effect at once.
+    # That is safe for the Exec target specifically: it runs after
+    # authentication, as the logging-in user, who can obviously read their own
+    # $HOME.
+    sudo_link_path "$ENV_DIR/bin/i3-xsession" /usr/local/bin/i3-xsession
+
+    # The .desktop, by contrast, is COPIED. The greeter parses it as the
+    # unprivileged `greeter` user, and $HOME is drwx------ -- a symlink into
+    # ~/src/env is unreadable to that user, so the entry would simply not
+    # appear in the picker, with nothing in the log to say why. Copying is the
+    # same concession links.zsh makes for the claude-cli:// URL handler, for a
+    # different reason.
+    #
+    # /usr/local/share is first in the XDG_DATA_DIRS default that
+    # noctalia-greeter compiles in ("/usr/local/share:/usr/share"), so no
+    # further configuration is needed. `cmp` first so a re-run is silent
+    # rather than touching the file's mtime every time.
+    local xsession_src="$ENV_DIR/machines/laptop/xsessions/i3-xprofile.desktop"
+    local xsession_dest=/usr/local/share/xsessions/i3-xprofile.desktop
+    if ! sudo cmp -s "$xsession_src" "$xsession_dest" 2>/dev/null; then
+        if sudo install -D -m 0644 "$xsession_src" "$xsession_dest"; then
+            print "    installed $xsession_dest (a copy -- the greeter cannot read \$HOME)"
+        else
+            print -u2 "    FAILED to install $xsession_dest"
+            return 1
+        fi
+    fi
+
+    # `noctalia-greeter sessions` prints the picker's list exactly as the
+    # greeter builds it, so it is the one-command check that the entry landed.
+    # It de-duplicates by Name=, which is why this entry is "i3 (xprofile)"
+    # and not a second "i3".
+    if ! noctalia-greeter sessions 2>/dev/null | grep -qx 'i3 (xprofile)'; then
+        print -u2 "    WARNING: the greeter does not list 'i3 (xprofile)'."
+        print -u2 "    Check with: noctalia-greeter sessions"
+    fi
 fi
