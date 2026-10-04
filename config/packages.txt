@@ -25,11 +25,37 @@ playerctl
 feh
 xprintidle
 imagemagick
-xrandr
+
+# The xrandr CLI. Spelled xorg-xrandr, not xrandr: there is no package by the
+# latter name, so the line that used to be here installed nothing and every
+# machine got xrandr only as a dependency of something else.
+xorg-xrandr
+
 discord
 signal-desktop
 brightnessctl
 tailscale
+
+# Disk usage analyser -- the GUI for "what filled the SSD this time".
+baobab
+
+# Not pulled in by anything here, but assumed by every "extract this" README.
+unzip
+
+# Ships /etc/security/limits.d/99-realtime-privileges.conf, which grants the
+# `realtime` GROUP rtprio 98, unlimited memlock and nice -11 -- so PipeWire
+# can take a real-time scheduling priority instead of falling back and
+# xrunning under load.
+#
+# Installing it is not enough: the drop-in keys on `@realtime`, and neither
+# machine's user is in that group yet, so right now this package does
+# nothing. `sudo usermod -aG realtime $USER` (then log out) is the other half.
+realtime-privileges
+
+# Firmware updates over LVFS (`fwupdmgr refresh && fwupdmgr update`). The
+# Framework 16 enumerates as an updatable device, so BIOS/EC updates land
+# without building a bootable updater.
+fwupd
 
 # Interactive screenshot tool: crop, annotate, then copy or save.
 # Bound to Print (F11) in config/i3/conf.d/fnrow.conf.
