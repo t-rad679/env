@@ -43,6 +43,36 @@ binds {
     // so the key opens Noctalia's display settings instead -- the manual
     // "fix my displays" button, same role as before.
     XF86Display { spawn "noctalia" "msg" "settings-open"; }
+
+    // The chat workspace (declared further down this file). By NAME, which
+    // is the whole reason it has one: a name resolves globally, so this
+    // reaches the workspace from any monitor, where `focus-workspace 2`
+    // would mean "the second workspace on whichever monitor I am looking
+    // at" and land somewhere different depending on where you started.
+    //
+    // Plain Mod+<letter>, not one of the Ctrl rows, because this is not a
+    // directional move. The table in config/niri/config.kdl covers relative
+    // motion -- focus/move a column, a window, a workspace, a monitor --
+    // and jumping to a specific named place is not on it. It is the same
+    // shape as Mod+D (launcher) and Mod+O (overview), which is the company
+    // it keeps here.
+    //
+    // M because C is the control centre, and Messenger and Messages are two
+    // of the four windows on it. Not Mod+3, which is where i3 had the chat
+    // workspace and is the obvious muscle memory: a bare number in this
+    // config means "the Nth workspace on the FOCUSED monitor", and making 3
+    // alone a global jump would leave 1, 2 and 4 staying put while 3
+    // teleports to another screen. (It would also be lying -- chat is the
+    // SECOND workspace on its monitor, under Netflix.)
+    //
+    // Shift sends the focused column there instead of following it, which
+    // is what Shift means on every other row of that table. The pair is
+    // deliberately mnemonic rather than positional, so the obvious family
+    // members stay available if the other scripted i3 workspaces ever move
+    // over: G for the grimoire, S for Spotify, P and W for the two Chrome
+    // profiles. All four, and their Shift pairs, are currently unbound.
+    Mod+M hotkey-overlay-title="Chat workspace" { focus-workspace "chat"; }
+    Mod+Shift+M hotkey-overlay-title="Move column to chat" { move-column-to-workspace "chat"; }
 }
 
 // The chat workspace: Messenger, Messages, Signal and Discord in a 2x2 on
@@ -71,6 +101,8 @@ binds {
 // outputs` prints in quotes for the panel. When the monitor is absent niri
 // falls back to the first output rather than failing, so an undocked session
 // still has a chat workspace.
+// Mod+M focuses it and Mod+Shift+M sends the focused column to it; both
+// are in the binds block above, and both address it by this name.
 workspace "chat" {
     open-on-output "Samsung Electric Company U32J59x HCJT503124"
 }
