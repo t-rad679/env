@@ -1,14 +1,16 @@
 #!/usr/bin/zsh
 
-# Set up marcelmarais/spotify-mcp-server under ~/src (shared by both roles).
-# Registering it in Claude (`claude mcp add ...`) is still a manual step.
+# Set up marcelmarais/spotify-mcp-server under ~/src (shared by both roles)
+# and register it with Claude Code.
 #
 # Re-runnable: skips an existing clone, only runs `npm install && npm run
 # build` while the build output (build/index.js, tsc's outDir per upstream
 # tsconfig.json; also the package's bin) is missing -- so a clone whose first
 # build failed gets rebuilt on the next run instead of skipped -- never touches
-# an existing config, never runs `npm run auth` without that build, and skips
-# the OAuth dance when a token is already stored. Never exits the parent init.
+# an existing config, never runs `npm run auth` without that build, skips the
+# OAuth dance when a token is already stored, and only registers the server
+# with Claude Code when that name is not registered already. Never exits the
+# parent init.
 
 ENV_DIR="${ENV_DIR:-$HOME/src/env}"
 
@@ -68,6 +70,32 @@ if [[ ! -e $BUILD ]]; then
     fi
 else
     print "    $BUILD present; skipping npm install/build"
+fi
+
+# Register the built server with Claude Code. Independent of the credentials
+# below: an unauthenticated server still registers fine and starts working the
+# moment `npm run auth` has run, so this sits above the early return taken for
+# a config that still holds the placeholders.
+#
+# Claude Code reads its MCP servers at session start, so this only has to
+# happen once per machine. `claude mcp add` on a name that already exists is an
+# error rather than a no-op, hence the `claude mcp get` guard.
+#
+# The registered command goes through bin/claude-hook-node instead of a bare
+# `node`: node comes from nvm, which only an interactive zsh puts on PATH, so
+# Claude Code started from ulauncher, a .desktop entry or a systemd user unit
+# would otherwise fail to spawn the server with "node not found".
+mcp_cmd=(claude mcp add spotify -s user -- zsh "$ENV_DIR/bin/claude-hook-node" "$BUILD")
+if ! command -v claude &> /dev/null; then
+    print "    claude not on PATH; register the server yourself with:"
+    print "      $mcp_cmd"
+elif claude mcp get spotify &> /dev/null; then
+    print "    spotify already registered with Claude Code"
+elif $mcp_cmd &> /dev/null; then
+    print "    registered spotify with Claude Code (user scope; restart Claude to pick it up)"
+else
+    print -u2 "    failed to register spotify with Claude Code; retry with:"
+    print -u2 "      $mcp_cmd"
 fi
 
 if grep -q 'PASTE-SPOTIFY-CLIENT' "$CONFIG"; then
