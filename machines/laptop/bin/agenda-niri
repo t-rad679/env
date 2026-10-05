@@ -1,0 +1,192 @@
+#!/usr/bin/zsh
+
+# The agenda workspace: the WeftWorks Calendar app on the left and the
+# WeftWorks Gmail app on the right, half the panel each, on the "agenda"
+# workspace that machines/laptop/niri/role.kdl pins to the built-in display.
+#
+# Usage: agenda-niri [--no-focus]
+#
+#   Starts whichever of the two is missing, puts them side by side, then
+#   focuses the calendar (which switches to its workspace). If both are
+#   already up it only focuses, so re-running this is a jump to the workspace
+#   rather than a rearrangement and a split resized by hand survives.
+#   --no-focus is for the login autostart.
+#
+# A sibling of bin/app-workspace-niri rather than a fifth target inside it:
+# that script's second window is always `kitty --class`, so a workspace made
+# of two Chrome apps would mean generalising its table and putting the four
+# workspaces it already serves at risk for the sake of one shared wait loop.
+# What is shared instead is the shape -- the helpers and arrange() below are
+# deliberately the same code, and a fix to one is worth carrying to the other.
+#
+# Both windows here are Chrome APPS (--app-id=, an installed PWA) rather than
+# browser windows, and that changes two things against bin/app-workspace-niri:
+#
+#   * --class is ignored. An app window's app_id is built by Chrome itself as
+#     "chrome-<crx app id>-<profile directory>", so the ids below are the
+#     only handle there is on these windows. (The --app=URL windows in
+#     bin/chat-grid-niri get the URL where the crx id goes; the ordinary
+#     browser windows in bin/app-workspace-niri do honour --class.)
+#   * The singleton hand-off is harmless, so there is nothing here like the
+#     refusal bin/app-workspace-niri needs. Launching into a user-data-dir
+#     that already has a live process hands the launch to that process, and a
+#     hand-off ignores --class -- fatal when --class is the only way to tell
+#     a window apart, irrelevant when the app_id comes from the app. This
+#     profile nearly always has a live process (the WeftWorks browser window
+#     on the weftworks workspace), so the hand-off is the normal path here,
+#     not the exception.
+#
+# The app_id encodes the crx app and the profile DIRECTORY -- which is
+# "Default" in every Chrome user-data-dir this repo creates -- and NOT the
+# user-data-dir. So the patterns below match a Calendar or Gmail app window
+# from any profile, not only the WeftWorks one: opening Gmail as an app from
+# the personal profile would be pulled onto this workspace too. Keep them in
+# step with the window rules in machines/laptop/niri/role.kdl.
+
+set -u
+
+local -r SELF="${0:t}"
+local -r WS="agenda"
+local -r UDD="$HOME/.config/chrome-weftworks"
+local -r usage="usage: $SELF [--no-focus]"
+
+# The crx app ids, as installed in that profile. They are the key
+# ~/.local/share/applications/chrome-<id>-Default.desktop is named after, and
+# what `ls "$UDD/Default/Web Applications/Manifest Resources"` lists. Note
+# that the .desktop filename carries no user-data-dir, so installing the same
+# app in a second profile overwrites the first profile's launcher entry.
+local -r CAL_ID="kjbdgfilnfhdoflbpgamdcdgpehopbep"
+local -r MAIL_ID="fmgjjmmmlfnkbppncabfkddbjimcfncm"
+
+# Chrome is quick to serve an app window off a profile that is already
+# running, but a cold profile has to start a browser first; 60 tries at 0.5s
+# is 30s, the same budget bin/app-workspace-niri gives Electron.
+local -ri TRIES=60
+
+# The two panes, in the order the columns are built left to right. Two app_id
+# spellings each: the native one Chrome reports under Wayland, and the
+# XWayland one (WM_CLASS "crx_<id>", exactly as under i3), so the layout
+# survives commenting out ELECTRON_OZONE_PLATFORM_HINT in
+# config/niri/config.kdl the way the chat rules do.
+local -ra PANE_NAME=(Calendar Mail)
+local -ra PANE_ID=("$CAL_ID" "$MAIL_ID")
+local -ra PANE_APPID=(
+    "^(chrome-${CAL_ID}-Default|crx_${CAL_ID})$"
+    "^(chrome-${MAIL_ID}-Default|crx_${MAIL_ID})$"
+)
+
+local -i focus=1
+while (( $# )); do
+    case "$1" in
+        --no-focus) focus=0 ;;
+        *)          print -u2 "$usage"; exit 2 ;;
+    esac
+    shift
+done
+
+if ! niri msg -j version >/dev/null 2>&1; then
+    print -u2 "$SELF: niri is not running"
+    exit 1
+fi
+
+# ------------------------------------------------------------------ helpers
+
+# First TILED window matching app_id regex $1, or empty. Tiled only, for the
+# same reason as bin/chat-grid-niri and bin/app-workspace-niri: a splash or an
+# updater can carry the app's own app_id, and a floating window is never part
+# of one of these layouts.
+window_by_appid() {
+    niri msg -j windows |
+        jq -r --arg re "$1" '
+            map(select(((.app_id // "") | test($re)) and .is_floating == false))
+            | .[0].id // empty'
+}
+
+pane_window() { window_by_appid "$PANE_APPID[$1]" }
+
+# Wait for pane $1 to map a window, printing its id.
+wait_for_pane() {
+    local -i i
+    local id=""
+    for (( i = 0; i < TRIES; i++ )); do
+        id="$(pane_window "$1")"
+        [[ -n "$id" ]] && { print -r -- "$id"; return 0 }
+        sleep 0.5
+    done
+    return 1
+}
+
+# setsid so the app outlives whatever started this -- a launcher, a terminal,
+# a tool harness -- and systemd-cat so its output lands in the journal rather
+# than /dev/null. Same reasoning as the other two niri layout scripts.
+launch() { setsid -f systemd-cat --identifier="$SELF" "$@" }
+
+launch_pane() {
+    launch google-chrome-stable \
+        --user-data-dir="$UDD" --profile-directory=Default \
+        --no-first-run --no-default-browser-check \
+        --app-id="$PANE_ID[$1]"
+}
+
+# ------------------------------------------------------------- arrangement
+
+# Calendar in column 1, mail in column 2, both on $WS.
+#
+# The window rules in niri/role.kdl already put both windows on the right
+# workspace at the right width as they open, so on a cold login this is
+# mostly confirming what is already true. It runs anyway because the rules
+# fire on OPEN only: a window that was already up somewhere else -- an app
+# launched from the Noctalia launcher onto whatever workspace was focused --
+# has to be fetched.
+arrange() {
+    local cal="$1" mail="$2"
+
+    niri msg action move-window-to-workspace --window-id "$cal" --focus false "$WS" || return 1
+    niri msg action move-window-to-workspace --window-id "$mail" --focus false "$WS" || return 1
+
+    # If the two ended up stacked in one column, peel the bottom one off.
+    # expel-window-from-column has no --id and acts on the bottom window of
+    # the FOCUSED column, hence the focus first.
+    local same=""
+    same="$(niri msg -j windows | jq -r --argjson a "$cal" --argjson m "$mail" '
+        [ .[] | select(.id == $a or .id == $m)
+          | .layout.pos_in_scrolling_layout[0] ] | unique | length == 1')"
+    if [[ "$same" == "true" ]]; then
+        niri msg action focus-window --id "$cal" || return 1
+        niri msg action expel-window-from-column || return 1
+    fi
+
+    niri msg action focus-window --id "$cal" || return 1
+    niri msg action move-column-to-index 1 || return 1
+    niri msg action focus-window --id "$mail" || return 1
+    niri msg action move-column-to-index 2 || return 1
+
+    # Heights back to automatic. A window that has ever been alone in a
+    # column carries that column's full height explicitly, which survives
+    # being moved here; resetting keeps a fetched window from arriving taller
+    # than the panel. Widths are the window rules' job, not this script's.
+    niri msg action reset-window-height --id "$cal" || return 1
+    niri msg action reset-window-height --id "$mail" || return 1
+}
+
+# ------------------------------------------------------------------- a run
+
+local -a win=("$(pane_window 1)" "$(pane_window 2)")
+
+# Only arrange when something was actually started: re-running this to jump
+# to the workspace must not undo a split resized by hand.
+local -i started=0 i
+for i in 1 2; do
+    [[ -n "$win[$i]" ]] && continue
+    launch_pane "$i"
+    win[$i]="$(wait_for_pane "$i")" || {
+        print -u2 "$SELF: no $PANE_NAME[$i] window within $(( TRIES / 2 ))s"
+        print -u2 "$SELF: check \`journalctl --user -t $SELF\`"
+        exit 1
+    }
+    started=1
+done
+
+(( started )) && { arrange "$win[1]" "$win[2]" || exit 1 }
+(( focus )) && niri msg action focus-window --id "$win[1]"
+exit 0

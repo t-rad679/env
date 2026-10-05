@@ -97,6 +97,16 @@ binds {
 
     Mod+S hotkey-overlay-title="Spotify" { focus-workspace "spotify"; }
     Mod+Shift+S hotkey-overlay-title="Move column to Spotify" { move-column-to-workspace "spotify"; }
+
+    // The agenda workspace -- calendar and mail, declared at the bottom of
+    // this file. A for agenda, which names the pair better than either
+    // obvious letter and, unlike them, has both halves free: Mod+C is the
+    // control centre and Mod+Shift+E is the quit prompt, both in
+    // config/niri/config.kdl, and niri rejects the entire config on a
+    // duplicate bind. Taking Mod+E while Mod+Shift+E still meant "quit"
+    // would be the same mistake Mod+P would have been for "personal".
+    Mod+A hotkey-overlay-title="Agenda: calendar and mail" { focus-workspace "agenda"; }
+    Mod+Shift+A hotkey-overlay-title="Move column to agenda" { move-column-to-workspace "agenda"; }
 }
 
 // The chat workspace: Messenger, Messages, Signal and Discord in a 2x2 on
@@ -224,6 +234,18 @@ workspace "spotify" {
     open-on-output "eDP-1"
 }
 
+// Calendar and mail, side by side. Also on the built-in panel and named by
+// connector for the same reason, so the panel carries two persistent
+// workspaces: Spotify first, this one second, in declaration order.
+//
+// Unlike the four workspaces above, this one has no terminal -- a calendar
+// and an inbox are both full-height reading surfaces and neither is the
+// other's sidekick, so the window rules below split it 50/50 rather than at
+// the golden ratio the app-plus-terminal workspaces use.
+workspace "agenda" {
+    open-on-output "eDP-1"
+}
+
 // google-chrome honours --class for ordinary browser windows, so each
 // profile arrives with its own app_id -- unlike the chat apps, which are
 // --app= windows and take their app_id from the URL instead. kitty honours
@@ -279,7 +301,44 @@ window-rule {
     default-column-width { proportion 0.382; }
 }
 
+// The two halves of the agenda workspace, matched by Chrome APP id rather
+// than by --class. These are installed PWAs started with --app-id=, so
+// google-chrome builds the app_id itself out of the crx app id and the
+// profile DIRECTORY -- "chrome-<crx id>-Default" -- and ignores --class
+// entirely, exactly as it does for the --app=URL chat windows above. The
+// second spelling in each rule is the XWayland one, where the window reports
+// WM_CLASS "crx_<crx id>" just as it does under i3; both are matched for the
+// same reason the chat rules match two, so the layout survives commenting
+// out ELECTRON_OZONE_PLATFORM_HINT in config/niri/config.kdl.
+//
+// What the app_id does NOT carry is the user-data-dir, only the profile
+// directory inside it -- and that is "Default" in every Chrome profile this
+// repo creates. So these rules match a Calendar or Gmail app window from any
+// profile, not just the WeftWorks one these are installed in: opening Gmail
+// as an app from the personal profile would land it here too. That is
+// accepted rather than worked around, because there is nothing in the
+// protocol to distinguish the two. Keep the ids in step with
+// machines/laptop/bin/agenda-niri.
+window-rule {
+    match app-id=r#"^chrome-kjbdgfilnfhdoflbpgamdcdgpehopbep-Default$"#
+    match app-id=r#"^crx_kjbdgfilnfhdoflbpgamdcdgpehopbep$"#
+    open-on-workspace "agenda"
+    default-column-width { proportion 0.5; }
+}
+
+window-rule {
+    match app-id=r#"^chrome-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default$"#
+    match app-id=r#"^crx_fmgjjmmmlfnkbppncabfkddbjimcfncm$"#
+    open-on-workspace "agenda"
+    default-column-width { proportion 0.5; }
+}
+
 // Start all four at login, after the chat grid. --no-focus so login focus is
 // left wherever it lands rather than being dragged to the last one to start,
 // matching the --no-focus on every i3 autostart line this replaces.
 spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/app-workspace-niri --all --no-focus"
+
+// And the agenda workspace, last. Its own script rather than a fifth target
+// in app-workspace-niri: see the header of bin/agenda-niri. --no-focus for
+// the same reason as the line above.
+spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/agenda-niri --no-focus"
