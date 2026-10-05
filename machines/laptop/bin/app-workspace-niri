@@ -1,0 +1,379 @@
+#!/usr/bin/zsh
+
+# An app and a terminal side by side on their own named workspace, split at
+# the golden ratio. One script for all four such workspaces on this laptop:
+#
+#   weftworks   WeftWorks Chrome + kitty       left monitor
+#   personal    Personal Chrome  + kitty       left monitor
+#   grimoire    Obsidian on the grimoire vault + kitty in the vault
+#                                              left monitor
+#   spotify     Spotify + kitty                built-in panel
+#
+# Usage: app-workspace-niri <target> [--term] [--no-focus]
+#        app-workspace-niri --all [--no-focus]
+#
+#   Starts whichever of the two windows is missing, arranges them, then
+#   focuses the app (which switches to its workspace). If both are already
+#   up it only focuses. --no-focus is for the login autostart.
+#
+#   --term is the terminal half on its own: it starts the kitty only if it is
+#   missing, places it beside the app exactly as at login, and focuses the
+#   terminal rather than the app. It never launches the app.
+#
+#   --all runs every target in turn, and is what niri's spawn-sh-at-startup
+#   calls. It implies nothing about focus on its own, so the login line
+#   passes --no-focus too.
+#
+# The niri counterpart of three i3 scripts -- bin/chrome-workspace (which
+# already served two of these), bin/obsidian-grimoire and bin/ws8-spotify.
+# They are one script here because niri took most of the differences away:
+# the workspace pinning that i3 needs bin/monitor-output and a set of X
+# resources for is a single open-on-output line per workspace, and the golden
+# ratio that i3 has to apply with `resize set width 38 ppt` after the fact is
+# a default-column-width on the window rule. What is left -- launch, wait,
+# put the app left of the terminal, focus -- is identical for all four, so
+# the per-target differences collapse to the case statement below.
+#
+# Identification under Wayland is NOT the same as under X, and the difference
+# is the one thing worth reading before editing this:
+#
+#   * google-chrome honours --class, so each profile's window arrives with
+#     the app_id named here, exactly as its WM_CLASS does under i3. (The chat
+#     apps in bin/chat-grid-niri do NOT, because --app= overrides app_id with
+#     the URL. These are ordinary browser windows, so they keep --class.)
+#   * kitty honours --class the same way.
+#   * Spotify reports "Spotify", capitalised, the same string as its X
+#     WM_CLASS.
+#   * Obsidian ignores --class under Wayland just as it does under X (tested
+#     on 1.13.7): every Obsidian window is "md.obsidian.Obsidian", so a
+#     window rule would drag ALL of them to the grimoire workspace. It is
+#     found by PID instead -- see grimoire_window below. This is why the
+#     grimoire has no open-on-workspace rule in niri/role.kdl while the other
+#     three do, and it mirrors exactly why i3 cannot `assign` it either.
+
+set -u
+
+local -r SELF="${0:t}"
+local -r usage="usage: $SELF <weftworks|personal|grimoire|spotify|--all> [--term] [--no-focus]"
+
+# Golden ratio, 1.618:1 -> 61.8/38.2. The window rules in niri/role.kdl carry
+# these as proportions for every window they can match; this copy is for the
+# Grimoire's Obsidian window, which no rule can match, so the script has to
+# size its column itself. Keep the two in step.
+local -r APP_WIDTH="61.8%"
+
+# Electron and Spotify are slow on a cold login; 60 tries at 0.5s is 30s each.
+local -ri TRIES=60
+
+if ! niri msg -j version >/dev/null 2>&1; then
+    print -u2 "$SELF: niri is not running"
+    exit 1
+fi
+
+# ------------------------------------------------------------------ helpers
+
+# First TILED window matching app_id regex $1, or empty. Tiled only, for the
+# same reason as bin/chat-grid-niri: an app's splash or updater can carry the
+# app's own app_id, and a floating window is never part of one of these
+# layouts.
+window_by_appid() {
+    niri msg -j windows |
+        jq -r --arg re "$1" '
+            map(select(((.app_id // "") | test($re)) and .is_floating == false))
+            | .[0].id // empty'
+}
+
+# The Grimoire's Obsidian window, found by process rather than by app_id.
+#
+# Electron's SingletonLock in the profile directory is a symlink to
+# "<hostname>-<pid>" of the main process, and niri reports a pid per window,
+# so the two can simply be matched. Under i3 this same trick needs the
+# window's _NET_WM_PID read out of the X tree; here it is a field in `niri
+# msg -j windows`.
+#
+# Reading the lock rather than $! is deliberate and is what makes a hand-off
+# work: launching obsidian against a profile that is already running exits
+# immediately and hands to the running instance, so $! would be the pid of a
+# process that is already gone.
+grimoire_window() {
+    local link pid
+    link="$(readlink "$GRIMOIRE_PROFILE/SingletonLock" 2>/dev/null)" || return 0
+    pid="${link##*-}"
+    [[ "$pid" == <-> ]] || return 0
+    niri msg -j windows |
+        jq -r --argjson pid "$pid" '
+            map(select(.pid == $pid and .is_floating == false))
+            | .[0].id // empty'
+}
+
+# Pid of the live process holding $1's Electron/Chrome singleton, or empty.
+# The lock is a symlink to "<hostname>-<pid>"; a stale one (the process died
+# without cleaning up) reads fine but names a pid that is gone, so the
+# liveness check is not optional.
+singleton_pid() {
+    local link pid
+    [[ -n "$1" ]] || return 0
+    link="$(readlink "$1/SingletonLock" 2>/dev/null)" || return 0
+    pid="${link##*-}"
+    [[ "$pid" == <-> ]] || return 0
+    kill -0 "$pid" 2>/dev/null && print -r -- "$pid"
+}
+
+app_window() {
+    if [[ "$TARGET" == grimoire ]]; then
+        grimoire_window
+    else
+        window_by_appid "$APP_APPID"
+    fi
+}
+
+term_window() { window_by_appid "^${TERM_CLASS}\$" }
+
+# Wait for $1 (a function name) to report a window id.
+wait_for() {
+    local -i i
+    local id=""
+    for (( i = 0; i < TRIES; i++ )); do
+        id="$("$1")"
+        [[ -n "$id" ]] && { print -r -- "$id"; return 0 }
+        sleep 0.5
+    done
+    return 1
+}
+
+# setsid so the app outlives whatever started this -- a launcher, a terminal,
+# a tool harness -- and systemd-cat so its output lands in the journal rather
+# than /dev/null. Same reasoning as bin/chat-grid and bin/chat-grid-niri.
+launch() { setsid -f systemd-cat --identifier="$SELF" "$@" }
+
+# --------------------------------------------------------------- the table
+
+local -r GRIMOIRE_PROFILE="$HOME/.config/obsidian-grimoire"
+local -r GRIMOIRE_VAULT="$HOME/docs/obsidian_vaults/grimoire"
+
+configure() {
+    TARGET="$1"
+    case "$TARGET" in
+        weftworks)
+            WS="weftworks"
+            APP_APPID='^weftworks-chrome$'
+            APP_PROFILE="$HOME/.config/chrome-weftworks"
+            TERM_CLASS="weftworks-chrome-term"
+            TERM_DIR="$HOME"
+            ;;
+        personal)
+            WS="personal"
+            APP_APPID='^personal-chrome$'
+            APP_PROFILE="$HOME/.config/chrome-personal"
+            TERM_CLASS="personal-chrome-term"
+            TERM_DIR="$HOME"
+            ;;
+        grimoire)
+            WS="grimoire"
+            APP_APPID='^md\.obsidian\.Obsidian$'
+            APP_PROFILE="$GRIMOIRE_PROFILE"
+            TERM_CLASS="grimoire-term"
+            TERM_DIR="$GRIMOIRE_VAULT"
+            ;;
+        spotify)
+            WS="spotify"
+            APP_APPID='^Spotify$'
+            APP_PROFILE=""
+            TERM_CLASS="spotify-term"
+            TERM_DIR="$HOME"
+            ;;
+        *)
+            print -u2 "$usage"
+            return 2
+            ;;
+    esac
+}
+
+launch_app() {
+    # A Chrome profile that already has a live process will serve this launch
+    # from THAT process, and a singleton hand-off ignores --class: the window
+    # arrives as plain "google-chrome", on whatever workspace happened to be
+    # focused, indistinguishable from an ordinary browser window. There is
+    # nothing useful to do with such a window -- it cannot be matched by a
+    # rule, and it cannot be told apart from the user's own Chrome -- so this
+    # refuses rather than littering.
+    #
+    # Reaching here already means no window carries our app_id, so a live
+    # singleton means exactly that hand-off case. Seen for real: the Netflix
+    # PWA runs with --user-data-dir=chrome-personal, so while Netflix is up
+    # the personal profile has a process and this target cannot come up. It
+    # does not bite at login, where nothing has started Netflix yet and this
+    # script gets the singleton first.
+    case "$TARGET" in
+        weftworks|personal)
+            local held
+            held="$(singleton_pid "$APP_PROFILE")"
+            if [[ -n "$held" ]]; then
+                print -u2 "$SELF: $TARGET: ${APP_PROFILE:t} is already held by pid $held,"
+                print -u2 "$SELF: $TARGET: so Chrome would ignore --class and the window could not be placed."
+                print -u2 "$SELF: $TARGET: close that browser (or give it its own --user-data-dir) and re-run."
+                return 1
+            fi
+            ;;
+    esac
+
+    case "$TARGET" in
+        weftworks)
+            launch google-chrome-stable \
+                --user-data-dir="$HOME/.config/chrome-weftworks" \
+                --class=weftworks-chrome --no-first-run --no-default-browser-check
+            ;;
+        personal)
+            launch google-chrome-stable \
+                --user-data-dir="$HOME/.config/chrome-personal" \
+                --class=personal-chrome --no-first-run --no-default-browser-check
+            ;;
+        grimoire)
+            # First run only: register the vault in this profile and mark it
+            # open, so Obsidian goes straight into it instead of showing the
+            # vault picker. The id is a per-profile key; any 16 hex digits do.
+            # Lifted from machines/laptop/bin/obsidian-grimoire, which is
+            # still the i3 path and must keep working.
+            if [[ ! -e "$GRIMOIRE_PROFILE/obsidian.json" ]]; then
+                mkdir -p "$GRIMOIRE_PROFILE"
+                local vault_id="${$(print -rn -- "$GRIMOIRE_VAULT" | md5sum)[1,16]}"
+                jq -n --arg id "$vault_id" --arg path "$GRIMOIRE_VAULT" \
+                    --argjson ts "$(date +%s%3N)" \
+                    '{vaults: {($id): {path: $path, ts: $ts, open: true}}}' \
+                    > "$GRIMOIRE_PROFILE/obsidian.json" || return 1
+            fi
+            launch obsidian --user-data-dir="$GRIMOIRE_PROFILE"
+            ;;
+        spotify)
+            launch spotify
+            ;;
+    esac
+}
+
+launch_term() { launch kitty --class "$TERM_CLASS" --directory "$TERM_DIR" }
+
+# ------------------------------------------------------------- arrangement
+
+# App in column 1, terminal in column 2, both on $WS.
+#
+# The window rules in niri/role.kdl already put every window they can match
+# on the right workspace at the right width as it opens, so on a cold login
+# most of this is confirming what is already true. It is done anyway because
+# the rules fire on OPEN only: a window that was already running somewhere
+# else, or one the rules cannot match at all (Obsidian), needs moving.
+arrange() {
+    local app="$1" term="$2"
+
+    niri msg action move-window-to-workspace --window-id "$app" --focus false "$WS" || return 1
+    niri msg action move-window-to-workspace --window-id "$term" --focus false "$WS" || return 1
+
+    # If the two ended up stacked in one column, peel the bottom one off.
+    # expel-window-from-column has no --id and acts on the bottom window of
+    # the FOCUSED column, hence the focus first.
+    local same=""
+    same="$(niri msg -j windows | jq -r --argjson a "$app" --argjson t "$term" '
+        [ .[] | select(.id == $a or .id == $t)
+          | .layout.pos_in_scrolling_layout[0] ] | unique | length == 1')"
+    if [[ "$same" == "true" ]]; then
+        niri msg action focus-window --id "$app" || return 1
+        niri msg action expel-window-from-column || return 1
+    fi
+
+    niri msg action focus-window --id "$app" || return 1
+    niri msg action move-column-to-index 1 || return 1
+    niri msg action focus-window --id "$term" || return 1
+    niri msg action move-column-to-index 2 || return 1
+
+    # Only the Grimoire needs its width set here; every other app window is
+    # matched by a rule that carries default-column-width. Harmless to skip,
+    # and skipping keeps a column someone has resized by hand from being
+    # snapped back on an unrelated run.
+    if [[ "$TARGET" == grimoire ]]; then
+        niri msg action focus-window --id "$app" || return 1
+        niri msg action set-column-width "$APP_WIDTH" || return 1
+    fi
+}
+
+# ------------------------------------------------------------------- a run
+
+run_target() {
+    configure "$1" || return $?
+
+    local app term
+    app="$(app_window)"
+    term="$(term_window)"
+
+    if (( term_only )); then
+        if [[ -z "$term" ]]; then
+            launch_term
+            term="$(wait_for term_window)" || {
+                print -u2 "$SELF: $TARGET: no $TERM_CLASS window within $(( TRIES / 2 ))s"
+                return 1
+            }
+            # No app yet means nothing to sit beside; leave the terminal
+            # owning the workspace until the app joins it.
+            [[ -n "$app" ]] && { arrange "$app" "$term" || return 1 }
+        fi
+        (( focus )) && niri msg action focus-window --id "$term"
+        return 0
+    fi
+
+    # Only arrange when something was actually started: re-running this to
+    # jump to a workspace must not undo a split resized by hand.
+    local -i started=0
+    if [[ -z "$app" ]]; then
+        launch_app || return 1
+        app="$(wait_for app_window)" || {
+            print -u2 "$SELF: $TARGET: no app window within $(( TRIES / 2 ))s"
+            print -u2 "$SELF: check \`journalctl --user -t $SELF\`"
+            return 1
+        }
+        started=1
+    fi
+    if [[ -z "$term" ]]; then
+        launch_term
+        term="$(wait_for term_window)" || {
+            print -u2 "$SELF: $TARGET: no $TERM_CLASS window within $(( TRIES / 2 ))s"
+            return 1
+        }
+        started=1
+    fi
+
+    (( started )) && { arrange "$app" "$term" || return 1 }
+    (( focus )) && niri msg action focus-window --id "$app"
+    return 0
+}
+
+# ---------------------------------------------------------------- dispatch
+
+local -i focus=1 term_only=0 all=0
+local target=""
+while (( $# )); do
+    case "$1" in
+        --all)      all=1 ;;
+        --term)     term_only=1 ;;
+        --no-focus) focus=0 ;;
+        -*)         print -u2 "$usage"; exit 2 ;;
+        *)          [[ -n "$target" ]] && { print -u2 "$usage"; exit 2 }
+                    target="$1" ;;
+    esac
+    shift
+done
+
+local TARGET="" WS="" APP_APPID="" APP_PROFILE="" TERM_CLASS="" TERM_DIR=""
+
+if (( all )); then
+    [[ -n "$target" ]] && { print -u2 "$usage"; exit 2 }
+    (( term_only )) && { print -u2 "$SELF: --all and --term are mutually exclusive"; exit 2 }
+    local -i rc=0
+    local t
+    # Each target independently: one app failing to start must not stop the
+    # rest of the login from coming up.
+    for t in weftworks personal grimoire spotify; do
+        run_target "$t" || rc=1
+    done
+    exit $rc
+fi
+
+[[ -z "$target" ]] && { print -u2 "$usage"; exit 2 }
+run_target "$target"

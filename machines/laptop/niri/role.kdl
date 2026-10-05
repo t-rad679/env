@@ -73,6 +73,30 @@ binds {
     // profiles. All four, and their Shift pairs, are currently unbound.
     Mod+M hotkey-overlay-title="Chat workspace" { focus-workspace "chat"; }
     Mod+Shift+M hotkey-overlay-title="Move column to chat" { move-column-to-workspace "chat"; }
+
+    // The other four named workspaces, same grammar as the chat pair above:
+    // plain Mod jumps there, Mod+Shift sends the focused column there. All
+    // by name, so they work from any monitor.
+    //
+    // W for WeftWorks and H for "home" -- the two Chrome profiles are a
+    // work/home pair, which is a better mnemonic than the browser they share
+    // anyway. P would have been the obvious letter for "personal", but
+    // Mod+Shift+P is already power-off-monitors in config/niri/config.kdl,
+    // and niri rejects the whole config on a duplicate bind. Taking Mod+P
+    // and leaving Mod+Shift+P meaning something unrelated would be worse
+    // than picking a letter whose pair is free, and re-binding a shared key
+    // for a laptop-only workspace would be worse still.
+    Mod+W hotkey-overlay-title="WeftWorks Chrome" { focus-workspace "weftworks"; }
+    Mod+Shift+W hotkey-overlay-title="Move column to WeftWorks" { move-column-to-workspace "weftworks"; }
+
+    Mod+H hotkey-overlay-title="Personal Chrome" { focus-workspace "personal"; }
+    Mod+Shift+H hotkey-overlay-title="Move column to Personal" { move-column-to-workspace "personal"; }
+
+    Mod+G hotkey-overlay-title="The Grimoire" { focus-workspace "grimoire"; }
+    Mod+Shift+G hotkey-overlay-title="Move column to the Grimoire" { move-column-to-workspace "grimoire"; }
+
+    Mod+S hotkey-overlay-title="Spotify" { focus-workspace "spotify"; }
+    Mod+Shift+S hotkey-overlay-title="Move column to Spotify" { move-column-to-workspace "spotify"; }
 }
 
 // The chat workspace: Messenger, Messages, Signal and Discord in a 2x2 on
@@ -147,3 +171,115 @@ window-rule {
 // script would be an absolute path with a username in it. The two machines
 // have different usernames, so nothing in this repo may do that.
 spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/chat-grid-niri"
+
+// ---------------------------------------------------------------------------
+// The app workspaces: an app and a terminal side by side at the golden ratio,
+// one named workspace each. The niri port of what i3 gets from `workspace N
+// output` rules in i3/laptop.conf, `assign` rules in i3/autostart.conf, and
+// three scripts (bin/chrome-workspace, bin/obsidian-grimoire, bin/ws8-spotify)
+// -- all four are bin/app-workspace-niri here, because niri absorbs most of
+// what those scripts were doing.
+//
+// Two things move out of the scripts and into this file:
+//
+//   * Output pinning. i3 cannot name a monitor it might not have, so
+//     bin/monitor-output resolves each panel's connector from its EDID at run
+//     time, publishes it as an X resource, and laptop.conf reads that back
+//     with set_from_resource. niri matches outputs by EDID make/model/serial
+//     natively, so each workspace just says where it lives.
+//   * The golden ratio. i3 has to let the terminal tile wherever it lands and
+//     then `resize set width 38 ppt` afterwards; niri takes a
+//     default-column-width on the window rule, so a window is the right width
+//     the moment it opens, including when it is relaunched by hand later.
+//
+// 1.618:1 is 61.8/38.2. bin/app-workspace-niri carries the same numbers for
+// the one window no rule can match -- keep them in step.
+//
+// One limitation worth knowing, because i3 does NOT have it: open-on-output
+// takes a single output, where i3's `workspace N output A B` takes a list and
+// uses the first that exists. laptop.conf relies on that for the chat
+// workspace (right monitor at home, top monitor at the parents' desk). The
+// three workspaces below name the home desk's left monitor only, so at a desk
+// without it niri falls back to its own choice of output rather than to a
+// named second preference. That is a gap against the i3 setup, not a
+// decision -- the fix, if it ever matters, is for bin/app-workspace-niri to
+// move the workspaces itself the way bin/monitor-output does under X.
+
+workspace "weftworks" {
+    open-on-output "Samsung Electric Company LS32A70 HCPR901577"
+}
+
+workspace "personal" {
+    open-on-output "Samsung Electric Company LS32A70 HCPR901577"
+}
+
+workspace "grimoire" {
+    open-on-output "Samsung Electric Company LS32A70 HCPR901577"
+}
+
+// The built-in panel, named by connector rather than EDID: eDP-1 is stable
+// in a way the dock's DisplayPorts are not, which is the same reason the
+// output block at the top of this file can say "eDP-1" too.
+workspace "spotify" {
+    open-on-output "eDP-1"
+}
+
+// google-chrome honours --class for ordinary browser windows, so each
+// profile arrives with its own app_id -- unlike the chat apps, which are
+// --app= windows and take their app_id from the URL instead. kitty honours
+// --class the same way. Both match the classes bin/app-workspace-niri
+// launches them with, and the classes the i3 `assign` rules already use.
+window-rule {
+    match app-id=r#"^weftworks-chrome$"#
+    open-on-workspace "weftworks"
+    default-column-width { proportion 0.618; }
+}
+
+window-rule {
+    match app-id=r#"^weftworks-chrome-term$"#
+    open-on-workspace "weftworks"
+    default-column-width { proportion 0.382; }
+}
+
+window-rule {
+    match app-id=r#"^personal-chrome$"#
+    open-on-workspace "personal"
+    default-column-width { proportion 0.618; }
+}
+
+window-rule {
+    match app-id=r#"^personal-chrome-term$"#
+    open-on-workspace "personal"
+    default-column-width { proportion 0.382; }
+}
+
+// Spotify reports "Spotify" capitalised, the same string as its X WM_CLASS.
+window-rule {
+    match app-id=r#"^Spotify$"#
+    open-on-workspace "spotify"
+    default-column-width { proportion 0.618; }
+}
+
+window-rule {
+    match app-id=r#"^spotify-term$"#
+    open-on-workspace "spotify"
+    default-column-width { proportion 0.382; }
+}
+
+// The Grimoire's terminal, but NOT the Grimoire itself. Obsidian ignores
+// --class under Wayland exactly as it does under X (tested on 1.13.7): every
+// Obsidian window is "md.obsidian.Obsidian", so a rule matching it would drag
+// every Obsidian window in the session onto this workspace. The Grimoire is
+// found by PID instead and placed by bin/app-workspace-niri, which also has
+// to set its column width because no rule can carry one for it. Same reason
+// i3 cannot `assign` it either.
+window-rule {
+    match app-id=r#"^grimoire-term$"#
+    open-on-workspace "grimoire"
+    default-column-width { proportion 0.382; }
+}
+
+// Start all four at login, after the chat grid. --no-focus so login focus is
+// left wherever it lands rather than being dragged to the last one to start,
+// matching the --no-focus on every i3 autostart line this replaces.
+spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/app-workspace-niri --all --no-focus"
