@@ -31,10 +31,15 @@ if systemctl cat ollama.service &>/dev/null; then
     sudo_install_file "$ENV_DIR/machines/desktop/systemd/ollama.service.d/10-gemma.conf" \
         /etc/systemd/system/ollama.service.d/10-gemma.conf || return 1
     if [[ $REPLY == installed ]]; then
-        sudo systemctl daemon-reload
-        sudo systemctl try-restart ollama.service
+        if ! { sudo systemctl daemon-reload && sudo systemctl try-restart ollama.service }; then
+            print -u2 "    FAILED to reload/restart ollama.service"
+            return 1
+        fi
     fi
-    sudo systemctl enable --now ollama.service
+    if ! sudo systemctl enable --now ollama.service; then
+        print -u2 "    FAILED to enable ollama.service"
+        return 1
+    fi
 
     # Pulling is ~11 GB of network, which --links-only (this hook runs there
     # too) must not do -- so only remind.
