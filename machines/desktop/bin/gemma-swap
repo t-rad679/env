@@ -46,4 +46,8 @@ done
 # Preload, so the first real request doesn't wait for the load.
 curl -sf --max-time 120 $API/api/generate -d "{\"model\":\"$ALIAS\"}" >/dev/null \
     || die "preloading $target as gemma failed"
+# Contract: success means the target is the only model left on the GPU.
+leftover=( ${(f)"$(ollama ps | awk 'NR > 1 { print $2 }')"} )
+leftover=( ${leftover:#$target_id} )
+(( $#leftover == 0 )) || die "still loaded after the swap: ${(j:, :)leftover}"
 print "gemma-swap: gemma -> $target, loaded"
