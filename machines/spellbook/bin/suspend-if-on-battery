@@ -1,0 +1,66 @@
+#!/usr/bin/zsh
+
+# Suspend the machine, but only when it is running on battery.
+#
+# Usage: suspend-if-on-battery        (no arguments)
+#
+# This is the action behind Noctalia's "suspend-on-battery" idle behaviour in
+# ~/.local/state/noctalia/settings.toml, which is a `command` behaviour
+# precisely because Noctalia's own `suspend` / `lock_and_suspend` actions have
+# no notion of the power source: an idle behaviour has `timeout`,
+# `locked_timeout`, `command` and `resume_command` and nothing else, so "only
+# on battery" has to be decided out here.
+#
+# Must be referenced by ABSOLUTE path from settings.toml. Noctalia is started
+# by niri's `spawn-at-startup` under greetd, so its PATH is the bare system
+# one -- no ~/src/env/bin, no machines/<role>/bin. Everything this script
+# calls (busctl, loginctl, systemctl, noctalia) lives in /usr/bin for the same
+# reason.
+#
+# Why UPower's aggregate OnBattery property and not a sysfs read: on this
+# Framework 16 /sys/class/power_supply holds seven entries, and most of the
+# obvious ones lie. `ACAD/online` is 1 whenever a charger is attached even
+# while `BAT1/status` reads `Discharging` (a full battery on mains trickles
+# down before it tops back up), the four `ucsi-source-psy-USBC000:*` nodes
+# report per-port USB-C state, and `hidpp_battery_15` is the wireless mouse --
+# a glob over */online or */status picks up all of it. UPower resolves the
+# whole tree into one boolean, and it is also the same source the Noctalia bar
+# widget shows, so the script and the bar can never disagree.
+
+set -u
+
+local on_battery
+if ! on_battery="$(busctl --system get-property \
+    org.freedesktop.UPower /org/freedesktop/UPower \
+    org.freedesktop.UPower OnBattery 2>/dev/null)"; then
+    # No upowerd, no verdict. Refusing to suspend is the safe failure: a
+    # machine that stays awake is an annoyance, one that suspends mid-build
+    # while plugged in is a bug report.
+    print -u2 "${0:t}: cannot reach UPower -- not suspending"
+    exit 1
+fi
+
+# `busctl get-property` prints the signature and the value: `b true` / `b false`.
+if [[ "$on_battery" != "b true" ]]; then
+    exit 0
+fi
+
+# Normally we are already locked by the time this runs: the `lock` behaviour
+# fires at its own (shorter) timeout, and `suspend-on-battery` uses
+# `locked_timeout`, which counts from that lock. This is the fallback for a
+# session where the lock behaviour was disabled or turned off -- resuming a
+# laptop straight onto an unlocked desktop is the one outcome worth a guard.
+# LockedHint is authoritative here because Noctalia sets it itself. The
+# session is named explicitly rather than relying on loginctl's "the caller's
+# session" default, which resolves off the caller's cgroup and comes back
+# empty from anything outside the graphical session; an unreadable hint is
+# treated as "not locked", which errs towards locking twice rather than not at
+# all.
+if [[ "$(loginctl show-session "${XDG_SESSION_ID:-0}" --property=LockedHint --value 2>/dev/null)" != yes ]]; then
+    noctalia msg session lock
+    # Give the lock surface a moment to actually map. Suspending into a
+    # half-drawn lock screen is how you get a visible desktop on resume.
+    sleep 1
+fi
+
+exec systemctl suspend
