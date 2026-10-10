@@ -51,10 +51,20 @@ layout {
     // dock's 3840px panel if the scrolling feels unpredictable.
     center-focused-column "never"
 
+    // Cycled by Mod+R (see the sizing binds below). 0.382 and 0.618 are the
+    // golden-ratio pair: give one window the major share and its neighbour
+    // the minor one and the two tile the screen exactly, gaps included.
+    // 0.618 is also what the laptop role.kdl's WeftWorks rule sets, so this
+    // reproduces that column by hand on any window. 1.0 is the full working
+    // area: Mod+Shift+F (maximize-column) also gets there, but as a toggle
+    // that restores the old width, where this is a stop in the cycle.
     preset-column-widths {
         proportion 0.33333
+        proportion 0.382
         proportion 0.5
+        proportion 0.618
         proportion 0.66667
+        proportion 1.0
     }
 
     default-column-width { proportion 0.5; }
