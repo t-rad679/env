@@ -1,0 +1,24 @@
+# Swap Ollama's "gemma" alias to the small model while a gamescope session
+# runs, and back to the big one when it ends, so games get most of the VRAM.
+# Linked into ~/.config/systemd/user/ and enabled by machines/desktop/init.zsh.
+#
+# The "Steam Big Picture" session runs `gamescope-session-plus steam`, which
+# starts and waits on gamescope-session-plus@steam.service. WantedBy= starts
+# this unit with it; BindsTo= stops it whenever that service stops -- logout
+# or crash -- which runs ExecStop.
+#
+# ExecStart has a "-" so a failed swap-to-small is logged but doesn't leave
+# the unit failed; otherwise ExecStop (swap back to big) would never run.
+[Unit]
+Description=Swap Gemma to the small model while gamescope runs
+BindsTo=gamescope-session-plus@steam.service
+After=gamescope-session-plus@steam.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=-%h/src/env/machines/desktop/bin/gemma-swap small
+ExecStop=%h/src/env/machines/desktop/bin/gemma-swap big
+
+[Install]
+WantedBy=gamescope-session-plus@steam.service
