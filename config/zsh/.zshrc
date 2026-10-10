@@ -8,7 +8,7 @@ fi
 autoload -U +X compinit && compinit
 
 # --- machine role ---
-# MACHINE_ROLE (desktop|laptop) comes from ~/.config/machine-role.env, which
+# MACHINE_ROLE (desktop|spellbook) comes from ~/.config/machine-role.env, which
 # init links to machines/<role>/machine-role.env in the env repo. Read it before
 # the env scripts so any of them can branch on it regardless of filename order.
 # Defaults to desktop when the file is missing (the same default as i3,

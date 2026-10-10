@@ -1,4 +1,4 @@
-// Laptop-only niri config. Linked to ~/.config/niri/role.kdl by
+// Spellbook-only niri config. Linked to ~/.config/niri/role.kdl by
 // init/links.zsh and included by config/niri/config.kdl (which explains why
 // the link exists instead of a $MACHINE_ROLE include pattern).
 //
@@ -19,17 +19,17 @@
 // enumerate as DP-7/DP-8 today and something else after the next dock cycle,
 // so they are deliberately not configured here. niri can match an output by
 // "make model serial" instead of connector, which is the EDID-keyed approach
-// machines/laptop/bin/monitor-output takes under X; that is the way to pin
+// machines/spellbook/bin/monitor-output takes under X; that is the way to pin
 // the externals when the time comes.
 output "eDP-1" {
     scale 1.0
 }
 
 binds {
-    // F7 / F8. Laptop-only because the desktop has no /sys/class/backlight
+    // F7 / F8. Spellbook-only because the desktop has no /sys/class/backlight
     // device at all.
     //
-    // Under i3 these go through machines/laptop/bin/brightness-step, which
+    // Under i3 these go through machines/spellbook/bin/brightness-step, which
     // exists to stop the backlight being walked down to a black screen.
     // Noctalia's own brightness control has that floor built in and shows an
     // OSD with it, so the script is not needed here -- it stays for the i3
@@ -85,7 +85,7 @@ binds {
     // and niri rejects the whole config on a duplicate bind. Taking Mod+P
     // and leaving Mod+Shift+P meaning something unrelated would be worse
     // than picking a letter whose pair is free, and re-binding a shared key
-    // for a laptop-only workspace would be worse still.
+    // for a spellbook-only workspace would be worse still.
     Mod+W hotkey-overlay-title="WeftWorks Chrome" { focus-workspace "weftworks"; }
     Mod+Shift+W hotkey-overlay-title="Move column to WeftWorks" { move-column-to-workspace "weftworks"; }
 
@@ -111,7 +111,7 @@ binds {
 
 // The chat workspace: Messenger, Messages, Signal and Discord in a 2x2 on
 // the right-hand dock monitor, the niri half of what i3 gets from
-// machines/laptop/i3/autostart.conf + i3/ws3-chat.json + bin/chat-grid.
+// machines/spellbook/i3/autostart.conf + i3/ws3-chat.json + bin/chat-grid.
 //
 // Named, not numbered, and that is the whole reason this works. niri
 // workspaces are dynamic and per-monitor, so an index means "the Nth
@@ -126,10 +126,10 @@ binds {
 // so the rules below always have somewhere to put things.
 //
 // open-on-output takes the EDID make/model/serial, not DP-8. Connector
-// numbers on this laptop are NOT stable -- the dock renumbers its
+// numbers on this spellbook are NOT stable -- the dock renumbers its
 // DisplayPorts between boots and even across a re-enumeration while logged
-// in, which is the same hazard machines/laptop/autorandr/settings.ini sets
-// match-edid=1 for and machines/laptop/bin/monitor-output resolves by hand
+// in, which is the same hazard machines/spellbook/autorandr/settings.ini sets
+// match-edid=1 for and machines/spellbook/bin/monitor-output resolves by hand
 // under X. niri matches outputs this way natively, so here it costs one
 // string and no helper script. The string is the whole of what `niri msg
 // outputs` prints in quotes for the panel. When the monitor is absent niri
@@ -142,7 +142,7 @@ workspace "chat" {
 }
 
 // Route the four chat apps to it however they are started, the counterpart
-// of the `assign` rules in machines/laptop/i3/autostart.conf. The rules fire
+// of the `assign` rules in machines/spellbook/i3/autostart.conf. The rules fire
 // on OPEN only, so a window that is already up and sitting elsewhere is not
 // dragged back -- bin/chat-grid-niri does that part explicitly.
 //
@@ -153,7 +153,7 @@ workspace "chat" {
 // so the routing survives commenting out ELECTRON_OZONE_PLATFORM_HINT in
 // config/niri/config.kdl, which that file documents as the thing to try when
 // an Electron app misbehaves. Keep these in step with GRID_APPID in
-// machines/laptop/bin/chat-grid-niri.
+// machines/spellbook/bin/chat-grid-niri.
 //
 // Signal and Discord report lowercase app_ids, not the capitalised names
 // their .desktop files use -- same as their X11 classes.
@@ -180,12 +180,12 @@ window-rule {
 // nor `$HOME` is expanded in its arguments and the only way to name the
 // script would be an absolute path with a username in it. The two machines
 // have different usernames, so nothing in this repo may do that.
-spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/chat-grid-niri"
+spawn-sh-at-startup "$HOME/src/env/machines/spellbook/bin/chat-grid-niri"
 
 // ---------------------------------------------------------------------------
 // The app workspaces: an app and a terminal side by side at the golden ratio,
 // one named workspace each. The niri port of what i3 gets from `workspace N
-// output` rules in i3/laptop.conf, `assign` rules in i3/autostart.conf, and
+// output` rules in i3/spellbook.conf, `assign` rules in i3/autostart.conf, and
 // three scripts (bin/chrome-workspace, bin/obsidian-grimoire, bin/ws8-spotify)
 // -- all four are bin/app-workspace-niri here, because niri absorbs most of
 // what those scripts were doing.
@@ -194,7 +194,7 @@ spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/chat-grid-niri"
 //
 //   * Output pinning. i3 cannot name a monitor it might not have, so
 //     bin/monitor-output resolves each panel's connector from its EDID at run
-//     time, publishes it as an X resource, and laptop.conf reads that back
+//     time, publishes it as an X resource, and spellbook.conf reads that back
 //     with set_from_resource. niri matches outputs by EDID make/model/serial
 //     natively, so each workspace just says where it lives.
 //   * The golden ratio. i3 has to let the terminal tile wherever it lands and
@@ -207,7 +207,7 @@ spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/chat-grid-niri"
 //
 // One limitation worth knowing, because i3 does NOT have it: open-on-output
 // takes a single output, where i3's `workspace N output A B` takes a list and
-// uses the first that exists. laptop.conf relies on that for the chat
+// uses the first that exists. spellbook.conf relies on that for the chat
 // workspace (right monitor at home, top monitor at the parents' desk). The
 // three workspaces below name the home desk's left monitor only, so at a desk
 // without it niri falls back to its own choice of output rather than to a
@@ -318,7 +318,7 @@ window-rule {
 // as an app from the personal profile would land it here too. That is
 // accepted rather than worked around, because there is nothing in the
 // protocol to distinguish the two. Keep the ids in step with
-// machines/laptop/bin/agenda-niri.
+// machines/spellbook/bin/agenda-niri.
 window-rule {
     match app-id=r#"^chrome-kjbdgfilnfhdoflbpgamdcdgpehopbep-Default$"#
     match app-id=r#"^crx_kjbdgfilnfhdoflbpgamdcdgpehopbep$"#
@@ -349,9 +349,9 @@ window-rule {
 // than racing it; the ordering lives there, where it can be enforced, and its
 // wait_for_weftworks comment is the full account. Do not try to express it by
 // moving these lines around.
-spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/app-workspace-niri --all --no-focus"
+spawn-sh-at-startup "$HOME/src/env/machines/spellbook/bin/app-workspace-niri --all --no-focus"
 
 // And the agenda workspace. Its own script rather than a fifth target in
 // app-workspace-niri: see the header of bin/agenda-niri. --no-focus for the
 // same reason as the line above.
-spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/agenda-niri --no-focus"
+spawn-sh-at-startup "$HOME/src/env/machines/spellbook/bin/agenda-niri --no-focus"

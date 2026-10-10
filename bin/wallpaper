@@ -5,7 +5,7 @@
 # every workspace with no windows on it is a black rectangle.
 #
 # feh is built with xinerama here, so a single --bg-fill scales the image to
-# each output separately -- which is what the mixed-DPI laptop dock needs
+# each output separately -- which is what the mixed-DPI spellbook dock needs
 # (a 2560x1600 eDP plus two 3840x2160 externals). --no-fehbg skips writing the
 # ~/.fehbg restore script: the wallpaper is set from i3's autostart and from
 # the autorandr hook, so nothing ever sources it.
@@ -17,7 +17,7 @@
 # covers every case on its own:
 #   * config/i3/conf.d/autostart.conf, at login and on i3 restart.
 #   * bin/wallpaper-watch, on i3's `output` event, i.e. every layout change.
-#   * machines/laptop/autorandr/postswitch, after a dock/undock that autorandr
+#   * machines/spellbook/autorandr/postswitch, after a dock/undock that autorandr
 #     actually switched profiles for.
 # Safe to run by hand (it is on PATH via config/zsh/env/path.zsh) and safe to
 # run repeatedly.

@@ -11,7 +11,7 @@
 # monitor-output is a no-op when a monitor is absent, when i3 is not running
 # and when the workspaces are already on the right outputs, so this is safe to
 # fire on every event. Guarded on the script existing so a half-provisioned
-# laptop still switches profiles cleanly.
+# spellbook still switches profiles cleanly.
 #
 # Repainting the wallpaper has to happen again too: the root pixmap is sized
 # for the layout that was live when it was painted, so a newly enabled output
@@ -23,7 +23,7 @@
 
 set -u
 
-local -r PIN="$HOME/src/env/machines/laptop/bin/monitor-output"
+local -r PIN="$HOME/src/env/machines/spellbook/bin/monitor-output"
 local -r WALLPAPER="$HOME/src/env/bin/wallpaper"
 
 # One call for both externals. This also re-points the i3 config rules at each

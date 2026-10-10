@@ -1,7 +1,7 @@
 #!/usr/bin/zsh
 
 # The Grimoire: one dedicated Obsidian window on the grimoire vault, living on
-# workspace 4 (which laptop.conf pins to the left monitor), with a kitty terminal
+# workspace 4 (which spellbook.conf pins to the left monitor), with a kitty terminal
 # in the vault directly to its right, split at the golden ratio.
 #
 # Usage: obsidian-grimoire [--term] [--no-focus]
@@ -77,7 +77,7 @@ start_grimoire() {
     fi
 
     # setsid so the app survives whatever launched this (a launcher, a
-    # terminal, i3's exec) -- same reasoning as machines/laptop/bin/chat-grid.
+    # terminal, i3's exec) -- same reasoning as machines/spellbook/bin/chat-grid.
     # If the profile is already running (but its window lost the mark, e.g.
     # after an i3 crash), this launch hands off to the running instance and
     # exits; the lookup below finds the running one either way.

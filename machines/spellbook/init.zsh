@@ -1,11 +1,11 @@
 #!/usr/bin/zsh
 
-# Laptop-only init, sourced last by init/init.zsh when MACHINE_ROLE=laptop
+# Spellbook-only init, sourced last by init/init.zsh when MACHINE_ROLE=spellbook
 # (also in --links-only mode, so keep everything here idempotent).
 #
-# Display profiles themselves are files, not setup: machines/laptop/autorandr/
+# Display profiles themselves are files, not setup: machines/spellbook/autorandr/
 # is linked to ~/.config/autorandr by init/links.zsh, and the login-time
-# `autorandr --change` lives in machines/laptop/xprofile.sh. What is left here
+# `autorandr --change` lives in machines/spellbook/xprofile.sh. What is left here
 # is the root-owned half -- the systemd side of dock/undock switching.
 
 source "${ENV_DIR:-$HOME/src/env}/init/lib.zsh"
@@ -14,7 +14,7 @@ source "${ENV_DIR:-$HOME/src/env}/init/lib.zsh"
 # itself for why: the package hardcodes `--default default` and our panel-only
 # profile is named "undocked". Same pattern as the desktop's LightDM drop-in --
 # the symlink points back into the repo so edits take effect without copying.
-sudo_link_path "$ENV_DIR/machines/laptop/systemd/autorandr.service.d/10-default-profile.conf" \
+sudo_link_path "$ENV_DIR/machines/spellbook/systemd/autorandr.service.d/10-default-profile.conf" \
     /etc/systemd/system/autorandr.service.d/10-default-profile.conf
 sudo systemctl daemon-reload
 
@@ -29,7 +29,7 @@ sudo systemctl daemon-reload
 # investigation, because the dock comes back before X re-checks its outputs.
 sudo systemctl enable autorandr.service
 
-# Backlight keys (F7/F8 in i3/laptop.conf) write to /sys/class/backlight, which
+# Backlight keys (F7/F8 in i3/spellbook.conf) write to /sys/class/backlight, which
 # is root-owned. brightnessctl ships a udev rule granting the video group write
 # access there, so membership in that group is the whole permission story --
 # without it the keys bind fine and then silently do nothing, which is a
@@ -56,10 +56,10 @@ fi
 # (i3), so this does not commit the machine to niri -- it only changes what
 # asks for the password.
 #
-# Laptop-only for now. The desktop still boots LightDM with its HDMI-3 greeter
+# Spellbook-only for now. The desktop still boots LightDM with its HDMI-3 greeter
 # drop-in, and both want to own display-manager.service, so this cannot move to
 # a shared init step until that machine moves too. See
-# machines/laptop/greetd/config.toml.
+# machines/spellbook/greetd/config.toml.
 #
 # Skipped entirely when the greeter is not installed, so --links-only (which
 # skips init/pacman.zsh) does not try to switch the login manager on a machine
@@ -71,7 +71,7 @@ else
     # `noctalia-greeter-apply-appearance --print-greeter-user`, which reads
     # /etc/greetd/config.toml to find out which user to chown its state dir to.
     # Run in the other order it falls back to a guess.
-    sudo_link_path "$ENV_DIR/machines/laptop/greetd/config.toml" /etc/greetd/config.toml
+    sudo_link_path "$ENV_DIR/machines/spellbook/greetd/config.toml" /etc/greetd/config.toml
 
     # Creates /var/lib/noctalia-greeter/{greeter,sync}.toml owned by the greetd
     # user, and adds a pam_systemd.so session line to /etc/pam.d/greetd if the
@@ -145,7 +145,7 @@ else
     # noctalia-greeter compiles in ("/usr/local/share:/usr/share"), so no
     # further configuration is needed. `cmp` first so a re-run is silent
     # rather than touching the file's mtime every time.
-    local xsession_src="$ENV_DIR/machines/laptop/xsessions/i3-xprofile.desktop"
+    local xsession_src="$ENV_DIR/machines/spellbook/xsessions/i3-xprofile.desktop"
     local xsession_dest=/usr/local/share/xsessions/i3-xprofile.desktop
     if ! sudo cmp -s "$xsession_src" "$xsession_dest" 2>/dev/null; then
         if sudo install -D -m 0644 "$xsession_src" "$xsession_dest"; then
@@ -242,7 +242,7 @@ fi
 
 # --- Noctalia battery plugins --------------------------------------------
 #
-# Two community plugins, both laptop-only for the same reason as the rest of
+# Two community plugins, both spellbook-only for the same reason as the rest of
 # the niri/Noctalia block in packages.txt -- the desktop has no battery and no
 # Noctalia:
 #
@@ -309,10 +309,10 @@ else
     # merges it over its defaults and fills the rest in on its first save.
     #
     # `noctalia msg plugins enable` is the supported way to do this and is not
-    # usable here -- it is IPC to a running shell, and on a new laptop init
+    # usable here -- it is IPC to a running shell, and on a new spellbook init
     # finishes before anything has ever logged into niri.
     local settings="${XDG_STATE_HOME:-$HOME/.local/state}/noctalia/settings.toml"
-    local ensure="$ENV_DIR/machines/laptop/noctalia-settings-ensure.awk"
+    local ensure="$ENV_DIR/machines/spellbook/noctalia-settings-ensure.awk"
     local plugins='yocraft/battery-widget,piero-93/battery-power-management'
 
     if ! mkdir -p "${settings:h}"; then

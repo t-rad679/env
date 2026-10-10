@@ -55,7 +55,7 @@ link_path "$ENV_DIR/config/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf" ||
 # (bound to Mod+grave in the niri config -- it is the Wayland replacement for
 # the tdrop dropdown i3 binds to the same key). A separate file rather than a
 # section of kitty.conf because the kitten looks for exactly this name, and it
-# is linked on both roles even though only the laptop runs niri today: it is
+# is linked on both roles even though only the spellbook runs niri today: it is
 # inert unless something invokes the kitten.
 link_path "$ENV_DIR/config/kitty/quick-access-terminal.conf" \
     "$HOME/.config/kitty/quick-access-terminal.conf" || rc=1
@@ -97,7 +97,7 @@ link_path "$ENV_DIR/config/flameshot" "$HOME/.config/flameshot" || rc=1
 # because link_path already mkdir -p's the parent of its destination.
 link_path "$ENV_DIR/config/wallpapers" "$HOME/pics/wallpapers" || rc=1
 
-# autorandr display profiles, per role. Only the laptop has a set (it docks);
+# autorandr display profiles, per role. Only the spellbook has a set (it docks);
 # the desktop's single monitor needs no profile at all, so the link is skipped
 # when the role ships no autorandr/ directory rather than dangling.
 #
@@ -108,7 +108,7 @@ if [[ -d "$ENV_DIR/machines/$MACHINE_ROLE/autorandr" ]]; then
     link_path "$ENV_DIR/machines/$MACHINE_ROLE/autorandr" "$HOME/.config/autorandr" || rc=1
 fi
 
-# WirePlumber drop-in config, per role. Only the laptop ships one: the CUBILUX
+# WirePlumber drop-in config, per role. Only the spellbook ships one: the CUBILUX
 # CA7 USB DAC on its dock needs a rule to be usable at all (ALSA's card profile
 # points "Analog Stereo Output" at the wrong PCM device, so the jack stays
 # silent -- see the file itself for the full story). Linked as a whole
@@ -119,7 +119,7 @@ if [[ -d "$ENV_DIR/machines/$MACHINE_ROLE/wireplumber" ]]; then
 fi
 
 # Ulauncher shortcuts (keyword -> command/URL entries), per role. Only the
-# laptop ships a set -- its "The Grimoire" entry runs a laptop-only script --
+# spellbook ships a set -- its "The Grimoire" entry runs a spellbook-only script --
 # so the link is skipped when the role has no file, leaving that machine's own
 # shortcuts.json alone.
 #

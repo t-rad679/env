@@ -20,19 +20,19 @@
 # nothing is killed, relaunched or reconfigured and no session can be lost.
 #
 # i3 cannot express a grid in its config, so the corners come from a saved
-# layout (machines/laptop/i3/ws3-chat.json) appended to ws3 BEFORE the apps
+# layout (machines/spellbook/i3/ws3-chat.json) appended to ws3 BEFORE the apps
 # start. That layout is four placeholder containers with swallow criteria; each
 # app's window is captured by the placeholder that matches it, which is what
 # makes the positions deterministic instead of "wherever i3 happened to split".
 # Order of operations matters -- an app launched before its placeholder exists
 # just tiles normally and never gets swallowed.
 #
-# The plain `assign` rules in machines/laptop/i3/autostart.conf are the
+# The plain `assign` rules in machines/spellbook/i3/autostart.conf are the
 # fallback for later: once these placeholders are used up, relaunching e.g.
 # Signal by hand still lands it on ws3, just without a reserved corner.
 #
 # Why Messenger and Messages each get their own --user-data-dir, the same way
-# machines/laptop/bin/chrome-workspace gives one to each browser profile:
+# machines/spellbook/bin/chrome-workspace gives one to each browser profile:
 # Chrome's process singleton is per user-data-dir, not per profile, so when
 # both ran out of ~/.config/google-chrome they raced it at every cold login.
 # Both spawned a browser process; one won the SingletonLock symlink, and the
@@ -63,7 +63,7 @@ set -u
 # name is captured once here for the messages the --regrid helpers print.
 local -r SELF="${0:t}"
 
-local -r LAYOUT="$HOME/src/env/machines/laptop/i3/ws3-chat.json"
+local -r LAYOUT="$HOME/src/env/machines/spellbook/i3/ws3-chat.json"
 local -r WS="3"
 local -r MESSENGER_UDD="$HOME/.config/chrome-messenger"
 local -r MESSAGES_UDD="$HOME/.config/chrome-messages"

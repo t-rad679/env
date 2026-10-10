@@ -1,7 +1,7 @@
 #!/usr/bin/zsh
 
-# Workspace 8 on the laptop: Spotify on the left and a kitty directly to its
-# right. laptop.conf pins ws8 to the built-in panel (eDP).
+# Workspace 8 on the spellbook: Spotify on the left and a kitty directly to its
+# right. spellbook.conf pins ws8 to the built-in panel (eDP).
 #
 # Usage: ws8-spotify [--term] [--no-focus]
 #
@@ -19,7 +19,7 @@
 # Spotify, not just onto the workspace. Spotify also sets WM_CLASS only after
 # it maps its window, so an `assign` on class "Spotify" can miss it. The script
 # waits for the window by class and marks it "spotify" instead. Same shape as
-# machines/laptop/bin/obsidian-grimoire and chrome-workspace.
+# machines/spellbook/bin/obsidian-grimoire and chrome-workspace.
 
 set -u
 
@@ -75,13 +75,13 @@ adopt_window() {
     fi
 
     # Moving to a workspace that does not exist yet creates it, and i3 creates
-    # it on its assigned output (eDP, from laptop.conf).
+    # it on its assigned output (eDP, from spellbook.conf).
     i3-msg -q "[id=$win] mark --add $mark, move container to workspace number $WS"
 }
 
 start_spotify() {
     # setsid so the app survives whatever launched this -- same reasoning as
-    # machines/laptop/bin/chat-grid. If Spotify is already running without the
+    # machines/spellbook/bin/chat-grid. If Spotify is already running without the
     # mark (e.g. after an i3 restart), this launch hands off to it and exits,
     # and adopt_window finds the running window anyway.
     setsid -f spotify >/dev/null 2>&1

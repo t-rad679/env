@@ -6,7 +6,7 @@
 # Managed by the env repo (config/.xprofile), linked by init/links.zsh. Do not
 # hand-edit ~/.xprofile: role-specific content goes in machines/<role>/xprofile.sh.
 
-# Machine role (desktop|laptop). ~/.config/machine-role.env is a plain
+# Machine role (desktop|spellbook). ~/.config/machine-role.env is a plain
 # KEY=VALUE file linked by init/role.zsh from machines/<role>/machine-role.env.
 # i3 reads $MACHINE_ROLE in its include path (config/i3/config). Defaults to
 # desktop when the role file is missing (the same default as everywhere else).

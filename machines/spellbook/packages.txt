@@ -1,20 +1,20 @@
-# Laptop-only packages. Installed by init/pacman.zsh together with the shared
+# Spellbook-only packages. Installed by init/pacman.zsh together with the shared
 # list in config/packages.txt (same format: one per line, # for comments, repo
 # or AUR).
 
 # Saves/restores the X display layout per monitor set, keyed on EDID, and
 # switches profiles automatically on dock/undock via the udev rule + systemd
-# units it ships. Profiles live in machines/laptop/autorandr/, linked to
+# units it ships. Profiles live in machines/spellbook/autorandr/, linked to
 # ~/.config/autorandr by init/links.zsh.
 #
-# Not cosmetic: without it the laptop boots with the dock's monitors
+# Not cosmetic: without it the spellbook boots with the dock's monitors
 # "connected but disabled", which makes amdgpu fire a hotplug IRQ every few
 # seconds. X re-probes on each one, i3 tears down and rebuilds its bar, and
 # every window gets resized twice a second.
 autorandr
 
 # Backlight control for the internal panel. Driven via
-# machines/laptop/bin/brightness-step from the F7/F8 bindings in i3/laptop.conf.
+# machines/spellbook/bin/brightness-step from the F7/F8 bindings in i3/spellbook.conf.
 # Its udev rule grants the *video* group write access to /sys/class/backlight,
 # which is why init.zsh below adds the user to that group.
 brightnessctl
@@ -26,12 +26,12 @@ jetbrains-toolbox
 
 # --- niri / Noctalia / greetd --------------------------------------------
 #
-# Laptop-only for now: the desktop still runs i3 on X with LightDM, and the
+# Spellbook-only for now: the desktop still runs i3 on X with LightDM, and the
 # greetd half of this would take its login screen over. Move these to
 # config/packages.txt when that machine follows.
 
 # The compositor. Scrollable tiling rather than i3's tree; config in
-# config/niri/config.kdl plus machines/laptop/niri/role.kdl.
+# config/niri/config.kdl plus machines/spellbook/niri/role.kdl.
 niri
 
 # Noctalia Shell: bar, launcher, notifications, control centre, lock screen,
@@ -43,7 +43,7 @@ noctalia
 
 # The login screen: greetd owns the VT and runs one greeter;
 # noctalia-greeter is a Noctalia-styled one with a session picker. Config in
-# machines/laptop/greetd/config.toml, wired up by init.zsh above.
+# machines/spellbook/greetd/config.toml, wired up by init.zsh above.
 #
 # noctalia-greeter is AUR-only (yay handles it); greetd is in extra.
 greetd
@@ -88,7 +88,7 @@ qt6-wayland
 # half the desktop -- is not a provider; having it and nothing else is exactly
 # the state that produced the error.
 #
-# Laptop-only for the same reason as the niri block above: it is Noctalia that
+# Spellbook-only for the same reason as the niri block above: it is Noctalia that
 # needs it, and auto-unlock is wired into /etc/pam.d/greetd, which only this
 # machine has. Chrome also stops falling back to its plaintext `basic`
 # password store once a keyring exists, which is the argument for moving this
@@ -98,8 +98,8 @@ gnome-keyring
 
 # --- Noctalia battery plugins --------------------------------------------
 #
-# Dependencies of the two community plugins that machines/laptop/init.zsh
-# enables; see that file for what they are and why they are laptop-only.
+# Dependencies of the two community plugins that machines/spellbook/init.zsh
+# enables; see that file for what they are and why they are spellbook-only.
 
 # Battery time-to-empty / time-to-full. Both plugins read the charge
 # percentage and the watts straight out of /sys/class/power_supply, but the

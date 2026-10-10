@@ -1,6 +1,6 @@
 #!/usr/bin/zsh
 
-# Publish this machine's role (desktop|laptop) as ~/.config/machine-role.env,
+# Publish this machine's role (desktop|spellbook) as ~/.config/machine-role.env,
 # a plain KEY=VALUE file that zsh (config/zsh/.zshrc), the X session
 # (config/.xprofile) and i3 (via the exported variable) all read.
 

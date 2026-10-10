@@ -1,7 +1,7 @@
 #!/usr/bin/zsh
 
 # An app and a terminal side by side on their own named workspace, split at
-# the golden ratio. One script for all four such workspaces on this laptop:
+# the golden ratio. One script for all four such workspaces on this spellbook:
 #
 #   weftworks   WeftWorks Chrome + kitty       left monitor
 #   personal    Personal Chrome  + kitty       left monitor
@@ -232,7 +232,7 @@ launch_app() {
             # First run only: register the vault in this profile and mark it
             # open, so Obsidian goes straight into it instead of showing the
             # vault picker. The id is a per-profile key; any 16 hex digits do.
-            # Lifted from machines/laptop/bin/obsidian-grimoire, which is
+            # Lifted from machines/spellbook/bin/obsidian-grimoire, which is
             # still the i3 path and must keep working.
             if [[ ! -e "$GRIMOIRE_PROFILE/obsidian.json" ]]; then
                 mkdir -p "$GRIMOIRE_PROFILE"

@@ -2,8 +2,8 @@
 # Start i3 the way a display manager would -- with ~/.xprofile sourced first.
 #
 # Installed as /usr/local/bin/i3-xsession (a symlink back into this repo, made
-# by machines/laptop/init.zsh) and pointed at by the Exec= of
-# machines/laptop/xsessions/i3-xprofile.desktop.
+# by machines/spellbook/init.zsh) and pointed at by the Exec= of
+# machines/spellbook/xsessions/i3-xprofile.desktop.
 #
 # Why this exists
 # ---------------
@@ -16,12 +16,12 @@
 # "i3" entry from the greeter starts an i3 with no ~/.xprofile at all:
 #
 #   * MACHINE_ROLE is never exported, so config/i3/config falls through to
-#     ${MACHINE_ROLE:-desktop} and the laptop silently loads the DESKTOP role;
+#     ${MACHINE_ROLE:-desktop} and the spellbook silently loads the DESKTOP role;
 #   * `autorandr --change` never runs, so the dock's monitors stay in the
-#     connected-but-disabled half-state that machines/laptop/xprofile.sh exists
+#     connected-but-disabled half-state that machines/spellbook/xprofile.sh exists
 #     to prevent (the amdgpu hotplug-IRQ storm);
-#   * machines/laptop/bin/monitor-output never publishes the X resources that
-#     the `workspace N output` rules in machines/laptop/i3/laptop.conf read,
+#   * machines/spellbook/bin/monitor-output never publishes the X resources that
+#     the `workspace N output` rules in machines/spellbook/i3/spellbook.conf read,
 #     so every workspace opens on whichever monitor it feels like.
 #
 # Sourcing ~/.xprofile here puts all of that back, and `exec` keeps i3 as the

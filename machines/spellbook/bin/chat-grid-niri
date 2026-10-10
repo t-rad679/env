@@ -1,7 +1,7 @@
 #!/usr/bin/zsh
 
 # Build the niri chat grid: Messenger, Messages, Signal and Discord in a 2x2
-# on the "chat" workspace, which machines/laptop/niri/role.kdl pins to the
+# on the "chat" workspace, which machines/spellbook/niri/role.kdl pins to the
 # right-hand dock monitor.
 #
 # Usage: chat-grid-niri           launch whatever is missing, then build the
@@ -14,7 +14,7 @@
 #     ----------+---------
 #     Signal    | Discord
 #
-# The niri counterpart of machines/laptop/bin/chat-grid, which does the same
+# The niri counterpart of machines/spellbook/bin/chat-grid, which does the same
 # job under i3. The division of labour is the same in both sessions -- config
 # decides WHICH workspace the apps land on, this script decides where they sit
 # ON it -- but the halves are spelled differently enough to be worth laying
@@ -48,7 +48,7 @@
 # is set in config/niri/config.kdl), but that line is documented as the thing
 # to comment out when an Electron app misbehaves -- so both spellings are
 # matched and the grid survives the fallback. Keep the patterns in step with
-# the window rules in machines/laptop/niri/role.kdl.
+# the window rules in machines/spellbook/niri/role.kdl.
 #
 # Why Messenger and Messages each get their own --user-data-dir is unchanged
 # from the i3 script, and the reasoning there is the full story: Chrome's

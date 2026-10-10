@@ -33,7 +33,7 @@
 # logins, bookmarks, history and extensions -- which is the point of keeping
 # personal and WeftWorks apart.
 #
-# Unlike Obsidian (see machines/laptop/bin/obsidian-grimoire, which has to hunt
+# Unlike Obsidian (see machines/spellbook/bin/obsidian-grimoire, which has to hunt
 # for its window by _NET_WM_PID), Chrome does honour --class: the window comes
 # up with the WM_CLASS class named below, which is what the assign rules in
 # i3/autostart.conf match on. It ignores --name, so the INSTANCE is left as
@@ -112,7 +112,7 @@ adopt_window() {
     fi
 
     # Moving to a workspace that does not exist yet creates it, and i3 creates
-    # it on its assigned output (laptop.conf pins ws1 and ws8 to the panel, ws2
+    # it on its assigned output (spellbook.conf pins ws1 and ws8 to the panel, ws2
     # and ws4 to the left monitor).
     i3-msg -q "[id=$win] mark --add $mark, move container to workspace number $WS"
 }
@@ -129,7 +129,7 @@ start_chrome() {
     fi
 
     # setsid so the browser survives whatever launched this (a launcher, a
-    # terminal, i3's exec) -- same reasoning as machines/laptop/bin/chat-grid.
+    # terminal, i3's exec) -- same reasoning as machines/spellbook/bin/chat-grid.
     # If this profile is already running (but its window lost the mark, e.g.
     # after an i3 crash), the launch hands off to the running instance and
     # exits; adopt_window finds the running window either way.

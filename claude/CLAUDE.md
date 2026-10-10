@@ -19,8 +19,8 @@ When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` 
   Not `related: ["[[Note A]]", "[[Note B]]"]`. Applies to every array-valued property (`related`, `projects`, `contexts`, `tags`, etc.).
 
 # Machines
-- I use two Arch Linux machines running i3: a desktop and a laptop. Both are provisioned from the env repo at `~/src/env` (i3 config at `~/src/env/config/i3/`, with role-only i3 config under `~/src/env/machines/<role>/i3/`).
-- `$MACHINE_ROLE` (`desktop` or `laptop`, from `~/.config/machine-role.env`; defaults to `desktop` when unset) says which machine a shell is on; desktop-only things (gaming, headless Obsidian, Claude remote control, the HDMI-3 greeter config) live under `~/src/env/machines/desktop/`.
+- I use two Arch Linux machines running i3: a desktop and a spellbook. Both are provisioned from the env repo at `~/src/env` (i3 config at `~/src/env/config/i3/`, with role-only i3 config under `~/src/env/machines/<role>/i3/`).
+- `$MACHINE_ROLE` (`desktop` or `spellbook`, from `~/.config/machine-role.env`; defaults to `desktop` when unset) says which machine a shell is on; desktop-only things (gaming, headless Obsidian, Claude remote control, the HDMI-3 greeter config) live under `~/src/env/machines/desktop/`.
 - **Check which machine you're on whenever it could matter — never assume.** Read `$MACHINE_ROLE`, or `cat ~/.config/machine-role.env` when the variable is unset. An unset variable is *not* evidence of a desktop: the `${MACHINE_ROLE:-desktop}` fallback throughout the repo is a provisioning default, so check the role file instead of inferring from the empty value. It's relevant more often than it looks — which packages and binaries are installed, i3-on-X vs niri-on-Wayland, which `machines/<role>/` files apply, monitor layout, and whether something you found running locally exists on the other box at all.
 
 # Shell Scripts

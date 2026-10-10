@@ -1,7 +1,7 @@
 #!/usr/bin/awk -f
 #
 # Idempotently ensure one key exists in one TOML table, leaving every other
-# byte of the file alone. Used by machines/laptop/init.zsh to enable Noctalia
+# byte of the file alone. Used by machines/spellbook/init.zsh to enable Noctalia
 # plugins by editing Noctalia's own settings.toml -- a file this repo
 # deliberately does not track (see init.zsh for why).
 #

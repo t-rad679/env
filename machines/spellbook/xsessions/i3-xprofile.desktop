@@ -2,7 +2,7 @@
 # An i3 session entry that runs ~/.xprofile first -- see bin/i3-xsession for
 # why the stock /usr/share/xsessions/i3.desktop does not, and what breaks.
 #
-# Installed to /usr/local/share/xsessions/ by machines/laptop/init.zsh.
+# Installed to /usr/local/share/xsessions/ by machines/spellbook/init.zsh.
 # /usr/local/share comes first in the XDG_DATA_DIRS default
 # ("/usr/local/share:/usr/share", which is the literal default compiled into
 # noctalia-greeter), so the greeter picks it up with no extra configuration.

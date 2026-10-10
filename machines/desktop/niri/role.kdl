@@ -10,5 +10,5 @@
 //
 // When this machine does move to niri, its i3-only config is the list of
 // things to port: the LightDM HDMI-3 greeter drop-in (which becomes a greetd
-// one -- see machines/laptop/greetd/), `xset s off -dpms`, the Spotify
+// one -- see machines/spellbook/greetd/), `xset s off -dpms`, the Spotify
 // screensaver, and the Steam and gamescope window rules.

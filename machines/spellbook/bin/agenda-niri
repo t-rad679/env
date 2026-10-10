@@ -2,7 +2,7 @@
 
 # The agenda workspace: the WeftWorks Calendar app on the left and the
 # WeftWorks Gmail app on the right, half the panel each, on the "agenda"
-# workspace that machines/laptop/niri/role.kdl pins to the built-in display.
+# workspace that machines/spellbook/niri/role.kdl pins to the built-in display.
 #
 # Usage: agenda-niri [--no-focus]
 #
@@ -47,7 +47,7 @@
 # user-data-dir. So the patterns below match a Calendar or Gmail app window
 # from any profile, not only the WeftWorks one: opening Gmail as an app from
 # the personal profile would be pulled onto this workspace too. Keep them in
-# step with the window rules in machines/laptop/niri/role.kdl.
+# step with the window rules in machines/spellbook/niri/role.kdl.
 
 set -u
 
@@ -139,7 +139,7 @@ wait_for_pane() {
 # Yield the cold start of $UDD to bin/app-workspace-niri, which needs it more.
 #
 # This script and that one are both spawn-sh-at-startup lines in
-# machines/laptop/niri/role.kdl, and niri fires those concurrently rather than
+# machines/spellbook/niri/role.kdl, and niri fires those concurrently rather than
 # in sequence -- so without this they both run google-chrome against $UDD in
 # the same second and race Chrome's SingletonLock, which is per user-data-dir
 # and not per profile. This is the same race bin/chat-grid documents at length

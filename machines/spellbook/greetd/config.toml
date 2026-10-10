@@ -1,8 +1,8 @@
-# greetd config, linked to /etc/greetd/config.toml by machines/laptop/init.zsh
+# greetd config, linked to /etc/greetd/config.toml by machines/spellbook/init.zsh
 # (sudo_link_path, so edits here take effect without re-copying -- same pattern
 # as pacman.conf and the desktop's LightDM drop-in).
 #
-# Laptop-only, deliberately. The desktop is still an i3/X11 machine booting
+# Spellbook-only, deliberately. The desktop is still an i3/X11 machine booting
 # LightDM with its own HDMI-3 greeter drop-in, and greetd and LightDM both want
 # to be display-manager.service -- a shared config here would switch the
 # desktop's login screen out from under it on the next init run. Move this to

@@ -12,9 +12,9 @@
 # The existing repaint triggers do not cover every case:
 #   * i3's `exec_always` (config/i3/conf.d/autostart.conf) only fires at login
 #     and on $mod+Shift+r.
-#   * machines/laptop/autorandr/postswitch only fires when autorandr actually
+#   * machines/spellbook/autorandr/postswitch only fires when autorandr actually
 #     switches profiles. autorandr skips its hooks when the matching profile is
-#     already applied (the same hazard machines/laptop/bin/monitor-output
+#     already applied (the same hazard machines/spellbook/bin/monitor-output
 #     documents), and autorandr.service has been observed dying outright with
 #     an unhandled ProcessLookupError mid-scan, taking the hooks with it.
 #

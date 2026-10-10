@@ -1,5 +1,5 @@
 // Saved i3 layout for the workspace 3 chat grid, applied by
-// machines/laptop/bin/chat-grid via `i3-msg append_layout` BEFORE the four
+// machines/spellbook/bin/chat-grid via `i3-msg append_layout` BEFORE the four
 // apps are launched. Each leaf below is a placeholder that swallows the first
 // window matching its criteria, which is what pins each app to its corner:
 //

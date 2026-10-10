@@ -14,8 +14,8 @@ export MACHINE_ROLE="${MACHINE_ROLE:-desktop}"
 INIT_LINKS_ONLY="${INIT_LINKS_ONLY:-0}"
 
 case $MACHINE_ROLE in
-    desktop|laptop) ;;
-    *) print -u2 "init: MACHINE_ROLE must be desktop or laptop (got '$MACHINE_ROLE')"; exit 2 ;;
+    desktop|spellbook) ;;
+    *) print -u2 "init: MACHINE_ROLE must be desktop or spellbook (got '$MACHINE_ROLE')"; exit 2 ;;
 esac
 
 typeset -a failed_steps
@@ -58,7 +58,7 @@ if [[ $INIT_LINKS_ONLY == 0 ]]; then
 fi
 
 # Role hook last: whatever only this machine needs (desktop: LightDM greeter
-# drop-in; laptop: nothing yet). Also runs in links-only mode, so keep hooks
+# drop-in; spellbook: nothing yet). Also runs in links-only mode, so keep hooks
 # idempotent.
 run_step "$ENV_DIR/machines/$MACHINE_ROLE/init.zsh" "$MACHINE_ROLE-only setup"
 

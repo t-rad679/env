@@ -3,7 +3,7 @@
 # Entry point for provisioning a fresh Arch install (either machine role).
 #
 #   init/init.sh                  # desktop (default; --desktopMode also ok)
-#   init/init.sh --laptop         # laptop
+#   init/init.sh --spellbook      # spellbook
 #   init/init.sh --links-only     # only the symlink/config steps: no packages,
 #                                 # no network, no chsh (safe re-run on a
 #                                 # machine that is already set up)
@@ -43,7 +43,7 @@ force_role=0
 for arg in "$@"; do
     case "$arg" in
         --desktop|--desktopMode) role=desktop; role_given=1 ;;
-        --laptop)                role=laptop;  role_given=1 ;;
+        --spellbook)             role=spellbook; role_given=1 ;;
         --links-only)            links_only=1 ;;
         --force-role)            force_role=1 ;;
         -h|--help)
@@ -63,14 +63,14 @@ done
 # No role flag means desktop. That default is deliberate and load-bearing
 # everywhere else -- a session that never sourced the role file still gets a
 # working config rather than none -- but as an *argument default* on a machine
-# that is already provisioned as a laptop it is never what anyone meant, and
+# that is already provisioned as a spellbook it is never what anyone meant, and
 # it fails silently in both directions:
 #
 #   role.zsh  repoints ~/.config/machine-role.env at the other role, so every
 #             new shell, and the i3 include, switch roles.
 #   links.zsh repoints ~/.config/niri/role.kdl at the other role's file. The
 #             desktop's is comment-only, so niri reloads a config that parses
-#             perfectly and has none of the laptop's binds, named workspaces or
+#             perfectly and has none of the spellbook's binds, named workspaces or
 #             window rules -- and `niri validate` still says "config is valid".
 #
 # The role-only dirs that links.zsh guards on `[[ -d ... ]]` (autorandr,
