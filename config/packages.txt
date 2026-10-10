@@ -26,6 +26,13 @@ feh
 xprintidle
 imagemagick
 
+# The user database behind the login screen's avatar. Every greeter that shows
+# a face (noctalia-greeter here, lightdm-gtk-greeter on the desktop) reads the
+# `IconFile` property off AccountsService; init/avatar.zsh writes it. It was
+# already on both machines as a transitive dependency of libmalcontent, which
+# is not a dependency to rely on -- hence the explicit entry.
+accountsservice
+
 # The xrandr CLI. Spelled xorg-xrandr, not xrandr: there is no package by the
 # latter name, so the line that used to be here installed nothing and every
 # machine got xrandr only as a dependency of something else.

@@ -44,6 +44,7 @@ fi
 
 run_step "$ENV_DIR/init/links.zsh"  "symlink zsh files, ~/env, i3, niri, kitty, ~/.xprofile"
 run_step "$ENV_DIR/init/claude.zsh" "Claude config, skills"
+run_step "$ENV_DIR/init/avatar.zsh" "login-screen avatar via AccountsService"
 
 if [[ $INIT_LINKS_ONLY == 0 ]]; then
     run_step "$ENV_DIR/init/marketplaces.zsh" "clone local Claude plugin marketplaces"
