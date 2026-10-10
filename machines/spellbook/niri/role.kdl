@@ -25,6 +25,34 @@ output "eDP-1" {
     scale 1.0
 }
 
+// Closing the lid locks the session. It deliberately does NOT suspend.
+//
+// The suspend half was never bound here -- it is logind's, and it is turned
+// off in machines/spellbook/logind.conf.d/lid.conf. With logind at its
+// defaults the lid suspends before anything in this file is reached, on AC as
+// readily as on battery, which is the behaviour this replaces.
+//
+// Why the lock runs from niri rather than from logind's own
+// HandleLidSwitch=lock: that action does nothing but emit the
+// org.freedesktop.login1.Session `Lock` signal, and nothing in this session
+// listens for it. niri pushes LockedHint *to* logind but has no handler for
+// the signal coming back, and Noctalia -- which owns the lock screen -- has
+// none either. The lid would lock nothing at all.
+//
+// These are libinput switch events, so they are independent of what logind
+// does or does not do with the lid. niri also disables the eDP output on lid
+// close by itself, so the backlight needs nothing here.
+//
+// One consequence worth knowing. With the lid shut the machine now stays
+// fully awake on AC -- that is the point, a closed-lid docked session -- and
+// on battery it is Noctalia's `suspend-on-battery` idle behaviour that
+// eventually puts it under. That countdown re-arms when the session locks, so
+// a lid closed on battery suspends after that behaviour's `locked_timeout`
+// (20 min today), not the 30 min an untouched-but-open laptop takes.
+switch-events {
+    lid-close { spawn "noctalia" "msg" "session" "lock"; }
+}
+
 binds {
     // F7 / F8. Spellbook-only because the desktop has no /sys/class/backlight
     // device at all.

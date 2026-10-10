@@ -29,6 +29,18 @@ sudo systemctl daemon-reload
 # investigation, because the dock comes back before X re-checks its outputs.
 sudo systemctl enable autorandr.service
 
+# Lid switch: lock, never suspend. The drop-in only takes logind out of the
+# way (see the file for why HandleLidSwitch=lock would be a no-op here); the
+# lock itself is a switch-events bind in machines/spellbook/niri/role.kdl.
+sudo_link_path "$ENV_DIR/machines/spellbook/logind.conf.d/lid.conf" \
+    /etc/systemd/logind.conf.d/lid.conf
+
+# logind re-reads its configuration on reload and keeps every session, unlike
+# a restart -- which is why this is a reload and must stay one. Without it the
+# drop-in sits there doing nothing until the next boot, and a lid close in
+# between still suspends.
+sudo systemctl reload systemd-logind
+
 # Backlight keys (F7/F8 in i3/spellbook.conf) write to /sys/class/backlight, which
 # is root-owned. brightnessctl ships a udev rule granting the video group write
 # access there, so membership in that group is the whole permission story --
