@@ -72,7 +72,7 @@ The laptop can boot either i3 on X or **niri** on Wayland; the desktop is still 
 
 ## Provisioning flow
 
-`init/init.sh [--desktop|--laptop] [--links-only]` installs zsh and execs `init/init.zsh` with `MACHINE_ROLE` set. `init.zsh` sources each step **in its own subshell** by absolute path off `ENV_DIR`, so a failing step (or a stray `exit`) is reported and init continues; it prints a summary of failed steps at the end. Every step is safe to re-run. Order:
+`init/init.sh [--desktop|--laptop] [--links-only] [--force-role]` installs zsh and execs `init/init.zsh` with `MACHINE_ROLE` set. `init.zsh` sources each step **in its own subshell** by absolute path off `ENV_DIR`, so a failing step (or a stray `exit`) is reported and init continues; it prints a summary of failed steps at the end. Every step is safe to re-run. Order:
 
 1. `fs.zsh` — `~/src`, `~/.config`, `~/.ssh` (0700), `~/docs/obsidian_vaults` (never the vault itself)
 2. `role.zsh` — link `~/.config/machine-role.env`
@@ -89,6 +89,14 @@ The laptop can boot either i3 on X or **niri** on Wayland; the desktop is still 
 13. `machines/<role>/init.zsh` — role hook (desktop: LightDM drop-in via `sudo`; laptop: autorandr drop-in, `video` group, the greetd / Noctalia Greeter setup that hands `display-manager.service` over from LightDM, the `i3 (xprofile)` session entry, the `pam_gnome_keyring.so` lines that auto-unlock the keyring, and the two Noctalia battery plugins)
 
 `--links-only` runs only steps 1, 2, 6, 7, 8, 10 and 13: no packages, network, or `chsh`. Steps 3, 4, 9, 12 need sudo/network and are the ones to stub when testing.
+
+### The role guard (`init/init.sh`)
+
+**A role flag is effectively mandatory on a provisioned machine.** `init.sh` refuses to run when the role it was asked for contradicts the `MACHINE_ROLE` already published in `~/.config/machine-role.env`, naming the flag that was missing; `--force-role` is the escape hatch for genuinely re-provisioning a box under the other role. A machine with no role file yet — a real first run — is never blocked, and neither is a role file with no parseable value.
+
+This exists because the argument default is the one place `${MACHINE_ROLE:-desktop}` is a trap rather than a safety net. A flagless `init.sh` on the laptop is *silent* and the damage is split across two steps: `role.zsh` repoints `~/.config/machine-role.env`, so every new shell and the i3 include switch roles, and `links.zsh` repoints `~/.config/niri/role.kdl` at `machines/desktop/niri/role.kdl` — which is comment-only, so niri's config watcher reloads a config that **parses perfectly** and has none of the laptop's binds, named workspaces or window rules. `niri validate` still says "config is valid". The role-only directories `links.zsh` guards with `[[ -d ... ]]` (`autorandr`, `wireplumber`, `ulauncher`) survive untouched because the desktop ships none of them, so the breakage looks partial, which makes it harder to place rather than easier. Packages are not touched either way, and `link_path` replaces symlinks without backing them up, so there is nothing to restore — the repair is re-running with the right flag.
+
+Two limits worth knowing. The guard reads the role file, which is the very thing a wrong run rewrites, so it protects against the *first* mistake and not a repeat while the file is still wrong — and for the same reason the repair itself needs `--force-role` (or a hand-fixed symlink) to get past it. Nothing cross-checks the role against the hardware.
 
 ### Linking rules (`init/lib.zsh`)
 
