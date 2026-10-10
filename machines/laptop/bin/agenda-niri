@@ -36,6 +36,12 @@
 #     on the weftworks workspace), so the hand-off is the normal path here,
 #     not the exception.
 #
+#     It is the normal path because wait_for_weftworks below makes it one.
+#     That is not a detail to skim: $UDD is shared with the weftworks target
+#     of bin/app-workspace-niri, which does need --class to survive, and at
+#     login niri starts the two scripts in the same instant. See the comment
+#     on that function.
+#
 # The app_id encodes the crx app and the profile DIRECTORY -- which is
 # "Default" in every Chrome user-data-dir this repo creates -- and NOT the
 # user-data-dir. So the patterns below match a Calendar or Gmail app window
@@ -63,6 +69,13 @@ local -r MAIL_ID="fmgjjmmmlfnkbppncabfkddbjimcfncm"
 # is 30s, the same budget bin/app-workspace-niri gives Electron.
 local -ri TRIES=60
 
+# How long to let bin/app-workspace-niri cold-start $UDD before giving up and
+# doing it here -- 30 tries at 0.5s is 15s. Deliberately well under TRIES: the
+# point is to lose a few seconds at login, not half a minute on a hand-run in
+# a session that has no WeftWorks browser and never will. See
+# wait_for_weftworks for why overshooting it is survivable anyway.
+local -ri WEFT_TRIES=30
+
 # The two panes, in the order the columns are built left to right. Two app_id
 # spellings each: the native one Chrome reports under Wayland, and the
 # XWayland one (WM_CLASS "crx_<id>", exactly as under i3), so the layout
@@ -74,6 +87,13 @@ local -ra PANE_APPID=(
     "^(chrome-${CAL_ID}-Default|crx_${CAL_ID})$"
     "^(chrome-${MAIL_ID}-Default|crx_${MAIL_ID})$"
 )
+
+# The WeftWorks browser window, the one window out of $UDD that is NOT a
+# Chrome app. Nothing here places or touches it -- it is only ever read, as
+# the signal wait_for_weftworks waits on. Same pattern as the weftworks target
+# of bin/app-workspace-niri and the window rule in niri/role.kdl; keep all
+# three in step.
+local -r WEFT_APPID='^weftworks-chrome$'
 
 local -i focus=1
 while (( $# )); do
@@ -111,6 +131,55 @@ wait_for_pane() {
     for (( i = 0; i < TRIES; i++ )); do
         id="$(pane_window "$1")"
         [[ -n "$id" ]] && { print -r -- "$id"; return 0 }
+        sleep 0.5
+    done
+    return 1
+}
+
+# Yield the cold start of $UDD to bin/app-workspace-niri, which needs it more.
+#
+# This script and that one are both spawn-sh-at-startup lines in
+# machines/laptop/niri/role.kdl, and niri fires those concurrently rather than
+# in sequence -- so without this they both run google-chrome against $UDD in
+# the same second and race Chrome's SingletonLock, which is per user-data-dir
+# and not per profile. This is the same race bin/chat-grid documents at length
+# for Messenger and Messages, and it is in this repo twice because the cure
+# there -- a user-data-dir each -- is not available here: a PWA is registered
+# inside a profile, so --app-id only works in the profile the apps were
+# installed in.
+#
+# The loser's launch is served by the winner's process, and a hand-off DROPS
+# --class. Harmless for the two panes below, whose app_id comes from
+# --app-id. Fatal for the weftworks browser window, whose app_id is only ever
+# --class: it arrives as plain "google-chrome", matches no window rule, lands
+# on whatever workspace happened to be focused, and bin/app-workspace-niri
+# then waits out its entire budget for a ^weftworks-chrome$ that can never
+# appear -- so that workspace loses its terminal too, because the wait is
+# ahead of the launch. Seen for real at login: that script logging
+# "Failed to create .../SingletonLock: File exists (17)" one second after
+# this one took it.
+#
+# (bin/app-workspace-niri's own singleton_pid refusal cannot catch this. It is
+# check-then-act: at the instant it looks, the winner has not created the lock
+# yet. Nothing it can check alone would help -- with one user-data-dir the
+# order has to be agreed, and this is the end that can afford to give way.)
+#
+# What is waited on is the WINDOW, not the lock: the lock appears as soon as
+# Chrome starts, which is before --class has produced anything to match, so a
+# lock-based wait would hand back too early and prove nothing.
+#
+# Returning non-zero is not an error, and the fall-through is safer than it
+# looks. By the time the budget is spent, either app-workspace-niri claimed
+# the singleton long ago -- in which case cold-starting here is really a
+# hand-off, --app-id still works, and the only cost was the wait -- or it is
+# not running at all, which is `agenda-niri` by hand on a session with no
+# WeftWorks browser, and cold-starting is then exactly right. The one order
+# that breaks is this script getting there first, and that is what the wait
+# removes.
+wait_for_weftworks() {
+    local -i i
+    for (( i = 0; i < WEFT_TRIES; i++ )); do
+        [[ -n "$(window_by_appid "$WEFT_APPID")" ]] && return 0
         sleep 0.5
     done
     return 1
@@ -172,6 +241,17 @@ arrange() {
 # ------------------------------------------------------------------- a run
 
 local -a win=("$(pane_window 1)" "$(pane_window 2)")
+
+# Let the weftworks browser take the profile first -- but only when a pane is
+# actually missing. With both already up this run is a jump to the workspace,
+# there is no launch to hand off and nothing to wait for.
+if [[ -z "$win[1]" || -z "$win[2]" ]] && ! wait_for_weftworks; then
+    print -u2 "$SELF: no weftworks-chrome window within $(( WEFT_TRIES / 2 ))s;"
+    print -u2 "$SELF: cold-starting ${UDD:t} here instead. If the weftworks"
+    print -u2 "$SELF: workspace came up on the wrong monitor or without its"
+    print -u2 "$SELF: terminal, this is why -- see the header, and"
+    print -u2 "$SELF: \`journalctl --user -t app-workspace-niri\`."
+fi
 
 # Only arrange when something was actually started: re-running this to jump
 # to the workspace must not undo a split resized by hand.

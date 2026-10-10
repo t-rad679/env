@@ -333,12 +333,25 @@ window-rule {
     default-column-width { proportion 0.5; }
 }
 
-// Start all four at login, after the chat grid. --no-focus so login focus is
-// left wherever it lands rather than being dragged to the last one to start,
-// matching the --no-focus on every i3 autostart line this replaces.
+// Start all four at login. --no-focus so login focus is left wherever it
+// lands rather than being dragged to the last one to start, matching the
+// --no-focus on every i3 autostart line this replaces.
+//
+// Reading order is not running order. niri fires every spawn-at-startup line
+// CONCURRENTLY -- it does not wait for one to finish before starting the next
+// -- so this line, the chat grid above and the agenda below are three
+// processes racing, not a sequence. That matters for exactly one pair: this
+// script's weftworks target and bin/agenda-niri share the chrome-weftworks
+// user-data-dir, and Chrome's process singleton is per user-data-dir. Two
+// cold launches into it at once meant one lost the SingletonLock, took a
+// hand-off, and lost --class with it -- which is the only handle the
+// weftworks window rule above has. bin/agenda-niri waits this one out rather
+// than racing it; the ordering lives there, where it can be enforced, and its
+// wait_for_weftworks comment is the full account. Do not try to express it by
+// moving these lines around.
 spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/app-workspace-niri --all --no-focus"
 
-// And the agenda workspace, last. Its own script rather than a fifth target
-// in app-workspace-niri: see the header of bin/agenda-niri. --no-focus for
-// the same reason as the line above.
+// And the agenda workspace. Its own script rather than a fifth target in
+// app-workspace-niri: see the header of bin/agenda-niri. --no-focus for the
+// same reason as the line above.
 spawn-sh-at-startup "$HOME/src/env/machines/laptop/bin/agenda-niri --no-focus"
