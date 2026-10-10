@@ -95,3 +95,31 @@ qt6-wayland
 # to config/packages.txt -- but the desktop would then get an unlock prompt
 # that nothing answers, so it moves when lightdm gets the same PAM wiring.
 gnome-keyring
+
+# --- Noctalia battery plugins --------------------------------------------
+#
+# Dependencies of the two community plugins that machines/laptop/init.zsh
+# enables; see that file for what they are and why they are laptop-only.
+
+# Battery time-to-empty / time-to-full. Both plugins read the charge
+# percentage and the watts straight out of /sys/class/power_supply, but the
+# estimate comes from `upower -i`, so without this the bar widget drops the
+# "2h 14m" and shows only the wattage.
+#
+# Explicit on purpose: upower was already on this machine as a transitive
+# dependency of localsearch and mixxx, which is exactly the kind of thing that
+# silently is not there on a fresh box.
+upower
+
+# powerprofilesctl, which is what the Battery & Power Management plugin shells
+# out to for the Power-saver / Balanced / Performance switch in its panel. The
+# plugin probes for it at load (`commandExists`) and hides the profile controls
+# when it is missing, so this is the difference between a battery readout and a
+# power-management widget.
+#
+# Worth knowing before a `pacman -S`: this package CONFLICTS with tuned-ppd,
+# which also provides the net.hadess.PowerProfiles D-Bus API but ships no
+# powerprofilesctl binary -- so a machine running tuned has the daemon the
+# plugin wants and not the CLI it calls, and pacman will ask to remove
+# tuned-ppd (and leave tuned behind as an orphan) when this goes in.
+power-profiles-daemon
