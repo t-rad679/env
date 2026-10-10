@@ -32,7 +32,7 @@ if systemctl cat ollama.service &>/dev/null; then
         /etc/systemd/system/ollama.service.d/10-gemma.conf || return 1
     # restart/enable block until the drop-in's preload has loaded the model.
     # Enable only when not already enabled and active, so a re-run with nothing
-    # changed never asks for a sudo password.
+    # changed runs no sudo for ollama.
     local restart=0 enable=0
     [[ $REPLY == installed ]] && restart=1
     systemctl is-enabled --quiet ollama.service && systemctl is-active --quiet ollama.service || enable=1
