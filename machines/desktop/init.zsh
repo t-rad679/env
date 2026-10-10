@@ -6,9 +6,8 @@
 # Headless Obsidian + Claude remote-control: the helper scripts are in
 # machines/desktop/bin (config/zsh/env/path.zsh puts it on PATH), and the
 # login-time Xvfb/Obsidian startup has its home in machines/desktop/xprofile.sh
-# (sourced by config/.xprofile) -- but that fragment is still a placeholder
-# until the desktop's hand-written ~/.xprofile (or ~/.xprofile.bak once init
-# has run) is pasted into it. The systemd user unit is not in the repo yet.
+# (sourced by config/.xprofile), which runs ~/.local/bin/obsidian-headless.zsh
+# as a transient user unit. That script is not in the repo yet.
 
 source "${ENV_DIR:-$HOME/src/env}/init/lib.zsh"
 
