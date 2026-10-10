@@ -24,7 +24,7 @@ sudo_link_path "$ENV_DIR/machines/desktop/lightdm.conf.d/50-resolution.conf" \
 # ollama.service but leaves it disabled. Our drop-in keeps models loaded and
 # preloads the big Gemma at every service start, so it is loaded at boot with
 # nobody logged in. The drop-in is COPIED (sudo_install_file), not linked:
-# /home is its own mount and systemd reads drop-ins before it mounts.
+# /home is a separate mount and systemd reads drop-ins before it is mounted.
 # Skipped when the unit is missing -- e.g. --links-only on a box that never
 # ran the package step.
 if systemctl cat ollama.service &>/dev/null; then

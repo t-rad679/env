@@ -57,7 +57,7 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 
 `link_path SRC DEST` (and `sudo_link_path` for `/etc`) is used for every link init makes: no-op if `DEST` already points at `SRC`; a symlink pointing elsewhere is replaced; a real file/dir is moved to `DEST.bak` once (a later run never overwrites an existing backup — it gets a timestamp suffix instead). Symlinks are always replaced, never linked into, so re-running can't create nested links inside a target directory. Every mutation (`mv`, `rm`, `mkdir`, `ln`) is checked: on failure the helper prints `FAILED to link ...` on stderr and returns non-zero, so the step fails and shows up in init's summary instead of printing a `linked` line that never happened.
 
-Files systemd reads at boot from `/etc` (unit drop-ins) are the exception: `/home` is a separate mount on the desktop and systemd reads units before it mounts, so a link into `~/src/env` would dangle. `sudo_install_file SRC DEST` copies them instead (no-op when identical; sets `REPLY=installed|unchanged` so the caller can `daemon-reload`). Editing such a file in the repo takes effect only after re-running init.
+Files systemd reads at boot from `/etc` (unit drop-ins) are the exception: `/home` is a separate mount on the desktop and systemd reads units before it is mounted, so a link into `~/src/env` would dangle. `sudo_install_file SRC DEST` copies them instead (no-op when identical; sets `REPLY=installed|unchanged` so the caller can `daemon-reload`). Editing such a file in the repo takes effect only after re-running init.
 
 ## Git helper scripts
 
