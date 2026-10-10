@@ -18,25 +18,32 @@ source "${ENV_DIR:-$HOME/src/env}/init/lib.zsh"
 # the package ships. Like pacman.conf, the symlink points back into this repo so
 # edits here take effect without re-copying.
 sudo_link_path "$ENV_DIR/machines/desktop/lightdm.conf.d/50-resolution.conf" \
-    /etc/lightdm/lightdm.conf.d/50-resolution.conf
+    /etc/lightdm/lightdm.conf.d/50-resolution.conf || return 1
 
 # Local LLM server: ollama-cuda (machines/desktop/packages.txt) ships
 # ollama.service but leaves it disabled. Our drop-in keeps models loaded and
 # preloads the big Gemma at every service start, so it is loaded at boot with
 # nobody logged in. The drop-in is COPIED (sudo_install_file), not linked:
-# /home is its own partition and systemd reads drop-ins before it mounts.
+# /home is its own mount and systemd reads drop-ins before it mounts.
 # Skipped when the unit is missing -- e.g. --links-only on a box that never
 # ran the package step.
 if systemctl cat ollama.service &>/dev/null; then
     sudo_install_file "$ENV_DIR/machines/desktop/systemd/ollama.service.d/10-gemma.conf" \
         /etc/systemd/system/ollama.service.d/10-gemma.conf || return 1
-    if [[ $REPLY == installed ]]; then
+    # restart/enable block until the drop-in's preload has loaded the model.
+    # Enable only when not already enabled and active, so a re-run with nothing
+    # changed never asks for a sudo password.
+    local restart=0 enable=0
+    [[ $REPLY == installed ]] && restart=1
+    systemctl is-enabled --quiet ollama.service && systemctl is-active --quiet ollama.service || enable=1
+    (( restart || enable )) && print "    loading gemma3:12b into ollama (can take a few minutes)..."
+    if (( restart )); then
         if ! { sudo systemctl daemon-reload && sudo systemctl try-restart ollama.service }; then
             print -u2 "    FAILED to reload/restart ollama.service"
             return 1
         fi
     fi
-    if ! sudo systemctl enable --now ollama.service; then
+    if (( enable )) && ! sudo systemctl enable --now ollama.service; then
         print -u2 "    FAILED to enable ollama.service"
         return 1
     fi
