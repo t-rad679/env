@@ -10,6 +10,11 @@
 
 # ============================================================================
 # TODO: PASTE THE HEADLESS OBSIDIAN / Xvfb STARTUP HERE
+if ! systemctl --user is-active --quiet obsidian-headless.service 2>/dev/null; then
+  systemd-run --user --unit=obsidian-headless --collect \
+    --description="Headless Obsidian for MCP" \
+    "$HOME/.local/bin/obsidian-headless.zsh" >/dev/null 2>&1
+fi
 #
 # The desktop's ~/.xprofile was hand-maintained before this fragment existed.
 # It starts Obsidian headless under its own Xvfb display (own Electron
