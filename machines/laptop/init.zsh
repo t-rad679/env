@@ -165,3 +165,77 @@ else
         print -u2 "    Check with: noctalia-greeter sessions"
     fi
 fi
+
+# --- gnome-keyring auto-unlock -------------------------------------------
+#
+# The Secret Service provider (see packages.txt). The daemon needs no starting
+# -- D-Bus activates it on the first request -- so all that is left is the
+# unlocking, which is pure PAM.
+#
+# Without these lines the keyring is created with a password of its own and
+# gcr-prompter asks for it once per login, which is the thing worth avoiding:
+# Noctalia reads its calendar token at startup, so the prompt lands on top of
+# the bar every single time you log in.
+#
+# Guarded on the module rather than on `pacman -Q`, because the module file is
+# the thing the PAM lines actually reference -- and because that keeps
+# --links-only from editing the login stack on a machine where the package was
+# never installed.
+if [[ ! -e /usr/lib/security/pam_gnome_keyring.so ]]; then
+    print "    gnome-keyring not installed -- skipping the keyring PAM setup"
+else
+    # Both lines are `optional` on purpose, and not only for style: PAM
+    # ignores an optional module that fails *or* cannot be loaded at all, so a
+    # gnome-keyring that is removed or renamed out from under this file
+    # degrades to "the keyring does not unlock" instead of "the greeter does
+    # not accept the password". `required` here would be a lockout waiting for
+    # a package rename.
+    #
+    # The auth line has to come AFTER `auth include system-local-login`: that
+    # include is what prompts for and collects the password, and
+    # pam_gnome_keyring reads it from the PAM auth token the earlier modules
+    # left behind. Placed before it there is nothing to read and the keyring
+    # stays locked, silently.
+    sudo_pam_add_line /etc/pam.d/greetd \
+        'auth       optional     pam_gnome_keyring.so' \
+        '^[[:space:]]*auth[[:space:]]+include[[:space:]]+system-local-login' || return 1
+
+    # auto_start makes the session phase start the daemon itself rather than
+    # waiting for D-Bus activation, which is what gets the keyring unlocked
+    # before the first client asks instead of after. Appended, so it lands
+    # after pam_systemd.so -- the session needs its XDG runtime dir first.
+    sudo_pam_add_line /etc/pam.d/greetd \
+        'session    optional     pam_gnome_keyring.so auto_start' || return 1
+
+    # And the easily-forgotten third one. The keyring is encrypted with the
+    # login password, but nothing tells it when that password changes -- so
+    # without this, the next `passwd` leaves a keyring that the new password no
+    # longer opens, and auto-unlock just quietly stops working. /etc/pam.d/passwd
+    # is shipped by pambase, not greetd, so this half is role-neutral and moves
+    # to a shared step whenever the desktop gets a keyring too.
+    sudo_pam_add_line /etc/pam.d/passwd \
+        'password   optional     pam_gnome_keyring.so' || return 1
+
+    # pam_gnome_keyring unlocks the keyring named `login`, and only that one.
+    # A keyring created interactively before this was wired up is called
+    # `Default_Keyring` and has its own password, and because it also owns the
+    # `default` alias the PAM lines above can be correct and still do nothing.
+    # There is no way to re-key it from here -- it has to be deleted and
+    # recreated -- so this only warns.
+    #
+    # The test is deliberately "the file exists AND names something else", not
+    # "the file says login": with only a login keyring the `default` file is
+    # normally ABSENT, because nothing ever set the alias explicitly and
+    # gnome-keyring resolves `default` to `login` on its own. Warning on
+    # absence would fire on every correctly-configured machine.
+    local default_keyring="$HOME/.local/share/keyrings/default"
+    if [[ -r "$default_keyring" && "$(<$default_keyring)" != "login" ]]; then
+        print -u2 "    WARNING: the default keyring is '$(<$default_keyring)', not 'login';"
+        print -u2 "    pam_gnome_keyring only unlocks 'login', so it will still prompt."
+        print -u2 "    To migrate (loses stored secrets -- Noctalia and Chrome re-create theirs):"
+        print -u2 "        rm ~/.local/share/keyrings/default ~/.local/share/keyrings/Default_*.keyring"
+        print -u2 "        systemctl --user restart gnome-keyring-daemon.service"
+        print -u2 "    then log out and back in. The restart is not optional: the"
+        print -u2 "    running daemon keeps serving a deleted keyring from memory."
+    fi
+fi

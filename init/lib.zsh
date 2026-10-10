@@ -74,3 +74,73 @@ _link_impl() {
     fi
     print "    linked $dest -> $src"
 }
+
+# sudo_pam_add_line FILE LINE [AFTER_REGEX]
+# Add LINE to the PAM service file FILE: appended at the end, or inserted
+# directly after the last line matching AFTER_REGEX. Returns non-zero (after a
+# FAILED line on stderr) if FILE does not exist or any mutation fails.
+#
+# Idempotent on the (type, module) pair rather than on the literal line, so a
+# hand-edited control flag -- `required` where this repo writes `optional` --
+# is left alone instead of being shadowed by a second line for the same
+# module. The match ignores comments by anchoring on the type field.
+#
+# /etc/pam.d files are edited in place rather than linked, because they belong
+# to the package that ships them (greetd, pambase): a symlink into this repo
+# would be clobbered on the next upgrade, and a missing file is a login
+# failure. The one-time backup therefore has to be a copy, not the `mv` that
+# backup_once does. It lands next to the original as FILE.bak, which is inert:
+# PAM resolves a service by exact filename, so nothing ever reads `greetd.bak`.
+sudo_pam_add_line() {
+    local file="$1" line="$2" after="$3"
+    local -a fields=( ${(z)line} )
+    local type="${fields[1]}"
+    # The module is the pam_*.so field, found by pattern rather than by
+    # position, because the control field is one word (`optional`) or several
+    # (`[success=1 default=ignore]`). Matched with the (r) subscript and not
+    # ${(M)fields:#pam_*.so}, which yields nothing here. The leading * also
+    # accepts the absolute-path spelling some distro files use.
+    local module="${fields[(r)*pam_*.so]}"
+
+    if [[ -z "$type" || -z "$module" ]]; then
+        print -u2 "    FAILED to patch $file (cannot parse '$line')"
+        return 1
+    fi
+    if ! sudo test -f "$file"; then
+        print -u2 "    FAILED to patch $file (no such PAM service file)"
+        return 1
+    fi
+    # ${type} and ${module} are braced because zsh -- unlike bash -- parses
+    # `$type[[:space:]]` as a SUBSCRIPT on $type, which fails to parse rather
+    # than interpolating.
+    if sudo grep -qE "^[[:space:]]*${type}[[:space:]]+.*${module}" "$file"; then
+        print "    $file already has a $type line for $module"
+        return 0
+    fi
+
+    local backup="$file.bak"
+    if ! sudo test -e "$backup"; then
+        if ! sudo cp -a "$file" "$backup"; then
+            print -u2 "    FAILED to patch $file (backup to $backup failed)"
+            return 1
+        fi
+        print "    backed up $file -> $backup"
+    fi
+
+    if [[ -n "$after" ]]; then
+        local lineno
+        lineno="$(sudo grep -nE "$after" "$file" | tail -1 | cut -d: -f1)"
+        if [[ -z "$lineno" ]]; then
+            print -u2 "    FAILED to patch $file (no line matching /$after/ to insert after)"
+            return 1
+        fi
+        if ! sudo sed -i "${lineno}a $line" "$file"; then
+            print -u2 "    FAILED to patch $file (sed insert after line $lineno failed)"
+            return 1
+        fi
+    elif ! print -r -- "$line" | sudo tee -a "$file" >/dev/null; then
+        print -u2 "    FAILED to patch $file (append failed)"
+        return 1
+    fi
+    print "    added '$line' to $file"
+}

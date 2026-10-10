@@ -71,3 +71,27 @@ xdg-desktop-portal-gnome
 
 # Qt apps pick X11 without this and come out blurry on the HiDPI panel.
 qt6-wayland
+
+# Secret Service provider -- the daemon owning org.freedesktop.secrets, which
+# is what Noctalia means by "no Secret Service provider": its calendar
+# (Google OAuth refresh token), its own encrypted-storage key and its
+# clipboard history all refuse to persist without one. Its error message names
+# the three it accepts -- Gnome-keyring, kwallet, keepassXC -- and this is the
+# cheap one: no KDE stack, and the only one with a PAM module, so the login
+# password unlocks it with no second prompt (see init.zsh).
+#
+# No spawn-at-startup line to go with it. gnome-keyring ships
+# /usr/share/dbus-1/services/org.freedesktop.secrets.service, so the first
+# client request D-Bus-activates the daemon inside user@.service.
+#
+# libsecret -- the client half, which was already installed as a dependency of
+# half the desktop -- is not a provider; having it and nothing else is exactly
+# the state that produced the error.
+#
+# Laptop-only for the same reason as the niri block above: it is Noctalia that
+# needs it, and auto-unlock is wired into /etc/pam.d/greetd, which only this
+# machine has. Chrome also stops falling back to its plaintext `basic`
+# password store once a keyring exists, which is the argument for moving this
+# to config/packages.txt -- but the desktop would then get an unlock prompt
+# that nothing answers, so it moves when lightdm gets the same PAM wiring.
+gnome-keyring
