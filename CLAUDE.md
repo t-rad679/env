@@ -10,7 +10,7 @@ Personal environment/dotfiles for two Arch Linux + i3 machines, a **desktop** an
 
 - **`init/`** — provisioning. `init.sh` is the bash bootstrap (bash because a fresh box has no zsh yet); everything else is zsh step scripts (see below).
 - **`config/`** — files that land in the home directory, laid out by where they go: `zsh/` (`.zshrc`, `.zsh_plugins.txt`, `env/*.zsh` → `~/.zshrc`, `~/.zsh_plugins.txt`, `~/env`), `i3/` (→ `~/.config/i3`), `kitty/kitty.conf`, `.xprofile`, `pacman.conf` (→ `/etc/pacman.conf`), `packages.txt` (shared package list), `spotify-mcp/spotify-config.sample.json`, `wallpapers/` (→ `~/pics/wallpapers`, the images `bin/wallpaper` paints on the root window).
-- **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `xprofile.sh` (role-only X-session startup, a POSIX sh fragment sourced by `config/.xprofile`; the desktop one is where the headless Obsidian / Xvfb startup belongs and is a marked placeholder until it is pasted in), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `bin/` with the headless Obsidian / Claude remote-control helpers).
+- **`machines/desktop/`, `machines/laptop/`** — everything that only one role gets: `machine-role.env` (the role file), `packages.txt` (role-only packages), `i3/*.conf` (role-only i3 config), `xprofile.sh` (role-only X-session startup, a POSIX sh fragment sourced by `config/.xprofile`; the desktop one is where the headless Obsidian / Xvfb startup belongs and is a marked placeholder until it is pasted in), `init.zsh` (role init hook, run last), plus role-only config (desktop: `lightdm.conf.d/`, `systemd/` (the `ollama.service` drop-in, copied to `/etc`, and the `gemma-gaming` user unit), `bin/` with the headless Obsidian / Claude remote-control helpers and `gemma-swap`).
 - **`bin/`** — scripts for both machines; `config/zsh/env/path.zsh` puts it (`~/src/env/bin`) on `PATH`. It is never linked to `~/bin`, which stays the user's own hand-written-scripts directory (also on `PATH` when present). `claude-hook-node` is the launcher for the `node` hooks in `claude/settings.json` (`zsh $HOME/src/env/bin/claude-hook-node <hook.js>`): it loads node from nvm when Claude Code was started without an interactive zsh (ulauncher, a .desktop entry, a systemd user unit), where PATH has no node.
 - **`git/`** — git helper scripts + the gitconfig include that exposes them.
 - **`claude/`** — user-level Claude Code config: `CLAUDE.md`, `settings.json`, `config.sample.json`, `user-skills/*`.
@@ -26,7 +26,7 @@ Secrets never live in the repo: `claude/config.json` (Obsidian key) and the Spot
 - **X session** — `config/.xprofile` (POSIX sh, because LightDM runs it with `sh`; this is the one deliberate exception to the zsh-only rule, shared by the `machines/<role>/xprofile.sh` fragments it sources) exports it, so i3 and everything it launches inherit it, then sources `machines/${MACHINE_ROLE:-desktop}/xprofile.sh` for role-only login setup. `init/links.zsh` warns loudly before backing up a real `~/.xprofile` to `~/.xprofile.bak`: its contents must be moved into the role fragment or they stop running at login.
 - **i3** — `config/i3/config` does `include $HOME/src/env/machines/$MACHINE_ROLE/i3/*.conf`. i3 expands include paths with `wordexp(3)` (env vars, `~`, globs) and silently skips a pattern that matches nothing, so each role dir ships at least one `.conf`.
 
-Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset s off -dpms`, the Spotify screensaver, Steam + its assign rule, the gamescope rule, and the headless Obsidian / Claude remote-control helpers. The laptop role is an empty, ready slot (comment-only files).
+Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset s off -dpms`, the Spotify screensaver, Steam + its assign rule, the gamescope rule, the local Gemma server (Ollama; the `gemma` alias is swapped to the small model while a gamescope session runs), and the headless Obsidian / Claude remote-control helpers. The laptop role is an empty, ready slot (comment-only files).
 
 ## The zsh setup
 
@@ -49,13 +49,15 @@ Desktop-only: gaming/NVIDIA packages, the LightDM HDMI-3 greeter drop-in, `xset 
 9. `git.zsh` — add `git/gitconfig` to the global `include.path` once
 10. `shell.zsh` — `chsh` to zsh if needed
 11. `spotify-mcp.zsh` — clone `spotify-mcp-server`; `npm install && npm run build` whenever `build/index.js` is missing (so a failed first build is retried on the next run); copy `spotify-config.sample.json` into it once (real file, never a link); `npm run auth` only once the build exists, the client id/secret are filled in and no `refreshToken` is stored
-12. `machines/<role>/init.zsh` — role hook (desktop: LightDM drop-in via `sudo`)
+12. `machines/<role>/init.zsh` — role hook (desktop: LightDM drop-in; copy the `ollama.service` drop-in to `/etc` with `sudo_install_file`, enable `ollama.service`, link + enable the `gemma-gaming` user unit, remind to `ollama pull` missing models)
 
 `--links-only` runs only steps 1, 2, 6, 7, 9 and 12: no packages, network, or `chsh`. Steps 3, 4, 8, 11 need sudo/network and are the ones to stub when testing.
 
 ### Linking rules (`init/lib.zsh`)
 
 `link_path SRC DEST` (and `sudo_link_path` for `/etc`) is used for every link init makes: no-op if `DEST` already points at `SRC`; a symlink pointing elsewhere is replaced; a real file/dir is moved to `DEST.bak` once (a later run never overwrites an existing backup — it gets a timestamp suffix instead). Symlinks are always replaced, never linked into, so re-running can't create nested links inside a target directory. Every mutation (`mv`, `rm`, `mkdir`, `ln`) is checked: on failure the helper prints `FAILED to link ...` on stderr and returns non-zero, so the step fails and shows up in init's summary instead of printing a `linked` line that never happened.
+
+Files systemd reads at boot from `/etc` (unit drop-ins) are the exception: `/home` is a separate partition on the desktop and systemd reads units before it mounts, so a link into `~/src/env` would dangle. `sudo_install_file SRC DEST` copies them instead (no-op when identical; sets `REPLY=installed|unchanged` so the caller can `daemon-reload`). Editing such a file in the repo takes effect only after re-running init.
 
 ## Git helper scripts
 

@@ -19,3 +19,40 @@ source "${ENV_DIR:-$HOME/src/env}/init/lib.zsh"
 # edits here take effect without re-copying.
 sudo_link_path "$ENV_DIR/machines/desktop/lightdm.conf.d/50-resolution.conf" \
     /etc/lightdm/lightdm.conf.d/50-resolution.conf
+
+# Local LLM server: ollama-cuda (machines/desktop/packages.txt) ships
+# ollama.service but leaves it disabled. Our drop-in keeps models loaded and
+# preloads the big Gemma at every service start, so it is loaded at boot with
+# nobody logged in. The drop-in is COPIED (sudo_install_file), not linked:
+# /home is its own partition and systemd reads drop-ins before it mounts.
+# Skipped when the unit is missing -- e.g. --links-only on a box that never
+# ran the package step.
+if systemctl cat ollama.service &>/dev/null; then
+    sudo_install_file "$ENV_DIR/machines/desktop/systemd/ollama.service.d/10-gemma.conf" \
+        /etc/systemd/system/ollama.service.d/10-gemma.conf || return 1
+    if [[ $REPLY == installed ]]; then
+        sudo systemctl daemon-reload
+        sudo systemctl try-restart ollama.service
+    fi
+    sudo systemctl enable --now ollama.service
+
+    # Pulling is ~11 GB of network, which --links-only (this hook runs there
+    # too) must not do -- so only remind.
+    local -a pulled=( ${(f)"$(ollama list 2>/dev/null | awk 'NR > 1 { print $1 }')"} )
+    local model
+    for model in gemma3:12b gemma3:4b; do
+        (( ${pulled[(Ie)$model]} )) || print "    $model not pulled -- run: ollama pull $model"
+    done
+else
+    print "    ollama.service not installed (ollama-cuda missing?) -- skipping"
+fi
+
+# While a gamescope session runs, swap the "gemma" alias to the small model so
+# games get the VRAM (machines/desktop/bin/gemma-swap). A user unit, so a link
+# is fine: the user manager starts after /home is mounted.
+link_path "$ENV_DIR/machines/desktop/systemd/user/gemma-gaming.service" \
+    "$HOME/.config/systemd/user/gemma-gaming.service" || return 1
+if ! { systemctl --user daemon-reload && systemctl --user enable gemma-gaming.service }; then
+    print -u2 "    FAILED to enable gemma-gaming.service"
+    return 1
+fi
