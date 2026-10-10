@@ -7,12 +7,18 @@
 # this unit with it; BindsTo= stops it whenever that service stops -- logout
 # or crash -- which runs ExecStop.
 #
+# Before= (not After=): stop order is the reverse of start order. With Before=,
+# the swap to small finishes before Steam starts, and on an explicit stop of
+# gamescope (logout, shutdown, `systemctl --user stop`) the swap back to big
+# runs only after gamescope has fully stopped and released its VRAM. With
+# After= it would stop first and load the 12b while the game still held VRAM.
+#
 # ExecStart has a "-" so a failed swap-to-small is logged but doesn't leave
 # the unit failed; otherwise ExecStop (swap back to big) would never run.
 [Unit]
 Description=Swap Gemma to the small model while gamescope runs
 BindsTo=gamescope-session-plus@steam.service
-After=gamescope-session-plus@steam.service
+Before=gamescope-session-plus@steam.service
 
 [Service]
 Type=oneshot
