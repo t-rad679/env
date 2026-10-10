@@ -17,6 +17,8 @@ After=gamescope-session-plus@steam.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+# gemma-swap's preload can take up to 120 s, more than the default 90 s.
+TimeoutSec=180
 ExecStart=-%h/src/env/machines/desktop/bin/gemma-swap small
 ExecStop=%h/src/env/machines/desktop/bin/gemma-swap big
 
