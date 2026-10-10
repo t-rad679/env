@@ -25,6 +25,7 @@ playerctl
 feh
 xprintidle
 imagemagick
+triliumnext-bin
 
 # The user database behind the login screen's avatar. Every greeter that shows
 # a face (noctalia-greeter here, lightdm-gtk-greeter on the desktop) reads the
