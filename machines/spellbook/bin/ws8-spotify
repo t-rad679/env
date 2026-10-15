@@ -81,8 +81,8 @@ adopt_window() {
 
 start_spotify() {
     # setsid so the app survives whatever launched this -- same reasoning as
-    # machines/spellbook/bin/chat-grid. If Spotify is already running without the
-    # mark (e.g. after an i3 restart), this launch hands off to it and exits,
+    # machines/spellbook/bin/chat-grid-i3. If Spotify is already running without
+    # the mark (e.g. after an i3 restart), this launch hands off to it and exits,
     # and adopt_window finds the running window anyway.
     setsid -f spotify >/dev/null 2>&1
     adopt_window "$SPOTIFY_CLASS" "$SPOTIFY_MARK"

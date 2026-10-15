@@ -10,15 +10,20 @@
 #        chat-grid-niri --regrid  rebuild the 2x2 from the windows already
 #                                 open, launching nothing
 #
+# The niri half of the pair. bin/chat-grid-i3 is the i3 half, and bin/chat-grid
+# is the dispatcher that picks between the two by asking which compositor
+# answers -- so this name is only reached directly from niri/role.kdl, where
+# spelling the session out is cheaper than probing for it.
+#
 #     Messenger | Messages
 #     ----------+---------
 #     Signal    | Discord
 #
-# The niri counterpart of machines/spellbook/bin/chat-grid, which does the same
-# job under i3. The division of labour is the same in both sessions -- config
-# decides WHICH workspace the apps land on, this script decides where they sit
-# ON it -- but the halves are spelled differently enough to be worth laying
-# out side by side:
+# The niri counterpart of machines/spellbook/bin/chat-grid-i3, which does the
+# same job under i3. The division of labour is the same in both sessions --
+# config decides WHICH workspace the apps land on, this script decides where
+# they sit ON it -- but the halves are spelled differently enough to be worth
+# laying out side by side:
 #
 #   i3                                  niri
 #   assign [class=...] $ws3             window-rule { match app-id=...
@@ -34,10 +39,10 @@
 #
 # That last row is why this script is much shorter than its i3 twin. i3's
 # placeholders are one-shot -- they are spent the moment they swallow a window
-# -- so chat-grid needs a separate --regrid path that ignores them and shuffles
-# live windows instead, plus a bail-out so a second run cannot append a second
-# set of placeholders and launch duplicate apps. Here there is nothing to
-# spend: arranging live windows is the only mechanism, so the login path and
+# -- so chat-grid-i3 needs a separate --regrid path that ignores them and
+# shuffles live windows instead, plus a bail-out so a second run cannot append
+# a second set of placeholders and launch duplicate apps. Here there is nothing
+# to spend: arranging live windows is the only mechanism, so the login path and
 # --regrid are the same few lines, and re-running is harmless.
 #
 # Matching on app_id, with two spellings each for the Chrome apps:
@@ -51,7 +56,7 @@
 # the window rules in machines/spellbook/niri/role.kdl.
 #
 # Why Messenger and Messages each get their own --user-data-dir is unchanged
-# from the i3 script, and the reasoning there is the full story: Chrome's
+# from bin/chat-grid-i3, and the reasoning there is the full story: Chrome's
 # process singleton is per user-data-dir, not per profile, so a shared dir
 # makes the two race at every cold login. Launcher output goes to the journal
 # (`journalctl --user -t chat-grid`) under the same identifier for the same

@@ -46,8 +46,8 @@
 #     hooks when the matching profile is already applied.
 #   * machines/spellbook/autorandr/postswitch, for docking/undocking while
 #     already logged in.
-#   * machines/spellbook/bin/chat-grid, which i3 execs at login, once workspace 3
-#     provably exists.
+#   * machines/spellbook/bin/chat-grid-i3, which i3 execs at login, once
+#     workspace 3 provably exists.
 
 set -u
 

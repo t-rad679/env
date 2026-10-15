@@ -1,7 +1,8 @@
 // Saved i3 layout for the workspace 3 chat grid, applied by
-// machines/spellbook/bin/chat-grid via `i3-msg append_layout` BEFORE the four
-// apps are launched. Each leaf below is a placeholder that swallows the first
-// window matching its criteria, which is what pins each app to its corner:
+// machines/spellbook/bin/chat-grid-i3 via `i3-msg append_layout` BEFORE the
+// four apps are launched. Each leaf below is a placeholder that swallows the
+// first window matching its criteria, which is what pins each app to its
+// corner:
 //
 //     Messenger | Messages
 //     ----------+---------
@@ -15,7 +16,7 @@
 //
 // Criteria notes:
 //   * Messenger and Messages are Chrome app windows, each on its own
-//     --user-data-dir, which is what lets chat-grid pass --class. Match on
+//     --user-data-dir, which is what lets chat-grid-i3 pass --class. Match on
 //     that class; the instance is Chrome's own "www.messenger.com" /
 //     "messages.google.com", which it sets from the URL and ignores --name.
 //   * Signal and Discord report lowercase classes ("signal", "discord"), not

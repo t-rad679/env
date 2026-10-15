@@ -142,11 +142,11 @@ wait_for_pane() {
 # machines/spellbook/niri/role.kdl, and niri fires those concurrently rather than
 # in sequence -- so without this they both run google-chrome against $UDD in
 # the same second and race Chrome's SingletonLock, which is per user-data-dir
-# and not per profile. This is the same race bin/chat-grid documents at length
-# for Messenger and Messages, and it is in this repo twice because the cure
-# there -- a user-data-dir each -- is not available here: a PWA is registered
-# inside a profile, so --app-id only works in the profile the apps were
-# installed in.
+# and not per profile. This is the same race bin/chat-grid-i3 documents at
+# length for Messenger and Messages, and it is in this repo twice because the
+# cure there -- a user-data-dir each -- is not available here: a PWA is
+# registered inside a profile, so --app-id only works in the profile the apps
+# were installed in.
 #
 # The loser's launch is served by the winner's process, and a hand-off DROPS
 # --class. Harmless for the two panes below, whose app_id comes from

@@ -129,7 +129,8 @@ start_chrome() {
     fi
 
     # setsid so the browser survives whatever launched this (a launcher, a
-    # terminal, i3's exec) -- same reasoning as machines/spellbook/bin/chat-grid.
+    # terminal, i3's exec) -- same reasoning as
+    # machines/spellbook/bin/chat-grid-i3.
     # If this profile is already running (but its window lost the mark, e.g.
     # after an i3 crash), the launch hands off to the running instance and
     # exits; adopt_window finds the running window either way.

@@ -139,7 +139,7 @@ binds {
 
 // The chat workspace: Messenger, Messages, Signal and Discord in a 2x2 on
 // the right-hand dock monitor, the niri half of what i3 gets from
-// machines/spellbook/i3/autostart.conf + i3/ws3-chat.json + bin/chat-grid.
+// machines/spellbook/i3/autostart.conf + i3/ws3-chat.json + bin/chat-grid-i3.
 //
 // Named, not numbered, and that is the whole reason this works. niri
 // workspaces are dynamic and per-monitor, so an index means "the Nth
@@ -198,6 +198,12 @@ window-rule {
 // Build the 2x2 at login. The window rules above get the apps onto the
 // workspace; niri has no saved-layout mechanism, so their arrangement on it
 // has to be done imperatively afterwards -- see bin/chat-grid-niri.
+//
+// chat-grid-niri, not the bin/chat-grid dispatcher: that one probes for a
+// live compositor so a hand-run `chat-grid --regrid` works in either
+// session, and here the session is niri by construction. Naming the half
+// directly keeps a login out of the one code path that can get the answer
+// wrong.
 //
 // Spelled out in full rather than relying on PATH: niri inherits the
 // systemd user environment, which has not sourced the zsh env scripts that

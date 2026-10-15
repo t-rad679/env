@@ -143,7 +143,7 @@ wait_for() {
 
 # setsid so the app outlives whatever started this -- a launcher, a terminal,
 # a tool harness -- and systemd-cat so its output lands in the journal rather
-# than /dev/null. Same reasoning as bin/chat-grid and bin/chat-grid-niri.
+# than /dev/null. Same reasoning as bin/chat-grid-i3 and bin/chat-grid-niri.
 launch() { setsid -f systemd-cat --identifier="$SELF" "$@" }
 
 # --------------------------------------------------------------- the table
