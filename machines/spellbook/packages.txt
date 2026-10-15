@@ -56,9 +56,11 @@ noctalia-greeter
 # Electron that refuses Wayland) silently fails to start.
 xwayland-satellite
 
-# wl-copy / wl-paste, the Wayland xclip. alias.zsh still assumes xclip, which
-# keeps working through xwayland-satellite but only sees the XWayland
-# clipboard -- which is not the same selection a native Wayland app uses.
+# wl-copy / wl-paste, the Wayland xclip. config/zsh/env/alias.zsh points `clip`
+# at this whenever WAYLAND_DISPLAY is set -- a session check rather than a role
+# check, because this machine boots either i3 on X or niri on Wayland. xclip
+# keeps working under niri through xwayland-satellite but only sees the
+# XWayland clipboard, which is not the same selection a native Wayland app uses.
 wl-clipboard
 
 # Screen sharing. Noctalia takes its own screenshots, but a portal is what
