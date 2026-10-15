@@ -1,4 +1,20 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__trilium__get_note",
+      "mcp__trilium__get_note_content",
+      "mcp__trilium__get_subtree",
+      "mcp__trilium__get_child_notes",
+      "mcp__trilium__get_attributes",
+      "mcp__trilium__search_notes",
+      "mcp__trilium__set_attribute",
+      "Bash(/home/it/src/tinkertune/.venv/bin/tinkertune backend:*)",
+      "Bash(/home/it/src/tinkertune/.venv/bin/tinkertune validate:*)",
+      "Bash(/home/it/src/tinkertune/.venv/bin/tinkertune status:*)",
+      "Bash(/home/it/src/tinkertune/.venv/bin/tinkertune queue:*)",
+      "mcp__trilium__delete_note"
+    ]
+  },
   "model": "opus[1m]",
   "statusLine": {
     "type": "command",
@@ -61,7 +77,6 @@
   "theme": "auto",
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "voiceEnabled": true,
   "autoMode": {
     "environment": [
       "### Org-wide",
@@ -90,5 +105,6 @@
       "**Org-specific CLIs**: None configured",
       "**Routine under /home/it/src/tinkertune/ prefix**: local file edits, reads, and git operations within this repo are routine"
     ]
-  }
+  },
+  "voiceEnabled": true
 }
