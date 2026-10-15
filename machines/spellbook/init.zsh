@@ -41,6 +41,27 @@ sudo_link_path "$ENV_DIR/machines/spellbook/logind.conf.d/lid.conf" \
 # between still suspends.
 sudo systemctl reload systemd-logind
 
+# The PPD-to-TuneD profile mapping, so that a manual Performance pick does not
+# silently disable battery adaptation -- see the file for the overlay semantics
+# that make that the default behaviour. /etc/tuned/ppd.conf is in tuned-ppd's
+# pacman backup array, so a symlink reads as "locally modified" and an upgrade
+# leaves it alone with a .pacnew beside it, the same deal config/pacman.conf
+# gets.
+sudo_link_path "$ENV_DIR/machines/spellbook/tuned/ppd.conf" /etc/tuned/ppd.conf
+
+# tuned-ppd reads the mapping once, at startup, and a mapping it rejects is a
+# TunedException rather than a warning -- the daemon exits and nothing owns
+# net.hadess.PowerProfiles. So restart it and say so if it did not come back,
+# because the alternative is finding out later via a battery widget that looks
+# broken.
+sudo systemctl restart tuned-ppd
+if ! systemctl is-active --quiet tuned-ppd; then
+    print -u2 "    WARNING: tuned-ppd did not come back after the ppd.conf link."
+    print -u2 "    It rejects a mapping that is non-injective or names a TuneD"
+    print -u2 "    profile that does not exist; check with:"
+    print -u2 "        systemctl status tuned-ppd"
+fi
+
 # Backlight keys (F7/F8 in i3/spellbook.conf) write to /sys/class/backlight, which
 # is root-owned. brightnessctl ships a udev rule granting the video group write
 # access there, so membership in that group is the whole permission story --
@@ -278,24 +299,12 @@ fi
 if [[ ! -x /usr/bin/noctalia ]]; then
     print "    noctalia not installed -- skipping the battery plugin setup"
 else
-    # powerprofilesctl is a soft dependency: the plugin probes for it at load
-    # and hides the profile switch when it is absent, so a missing one is a
-    # quietly reduced widget rather than a failure. Hence a warning, not a
-    # return -- and the pacman line rather than a `yay -S`, because swapping
-    # tuned-ppd out is a decision, not a dependency fix (see packages.txt).
-    if ! command -v powerprofilesctl >/dev/null 2>&1; then
-        print -u2 "    WARNING: powerprofilesctl is missing, so Battery & Power"
-        print -u2 "    Management will show the battery but no profile switch."
-        print -u2 "    It ships with power-profiles-daemon, which conflicts with"
-        print -u2 "    tuned-ppd:"
-        print -u2 "        sudo pacman -S power-profiles-daemon"
-    elif ! systemctl is-enabled power-profiles-daemon.service >/dev/null 2>&1; then
-        # Unlike gnome-keyring next door, this one is not D-Bus activated into
-        # the user session -- it is a system service, and powerprofilesctl just
-        # errors out when nothing owns net.hadess.PowerProfiles.
-        sudo systemctl enable --now power-profiles-daemon.service || return 1
-        print "    enabled power-profiles-daemon"
-    fi
+    # Battery & Power Management shows charge and watts but NO profile switch
+    # here: it probes for `powerprofilesctl` with commandExists and hides those
+    # controls when it is absent, and the binary ships only in
+    # power-profiles-daemon, which this machine deliberately does not have (it
+    # runs tuned/tuned-ppd instead -- `tuned-adm profile` is the way to switch).
+    # Not a fault to fix; noted so a missing switch does not read as a bug.
 
     # The plugin's battery_device setting has a hard default of "BAT0" and no
     # autodetection, and this machine's battery is BAT1 -- so a plugin left at
