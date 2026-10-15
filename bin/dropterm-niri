@@ -1,0 +1,134 @@
+#!/usr/bin/zsh
+# The dropdown terminal, under niri. Bound to Mod+Grave in
+# config/niri/config.kdl; the geometry is the `^dropterm$` window-rule there.
+#
+# Why this is a script and not `kitten quick-access-terminal`, which is what
+# this replaced: the kitten's window is a wlr-layer-shell surface, and a layer
+# surface takes its output at creation time. The protocol has no request to
+# move one afterwards, so the dropdown was stuck on whichever monitor it was
+# first opened on -- in practice eDP-1, while the focused monitor was DP-8.
+# kitty does pass `--move-to-active-monitor` when it spawns the kitten, but
+# `kitten panel --help` documents that flag as "supported on macOS only", so
+# on Wayland it is a silent no-op. Nothing in kitty or niri can relocate a
+# layer surface.
+#
+# An ordinary toplevel window, on the other hand, niri moves between outputs
+# freely -- and moving a window does not touch the process behind it. So the
+# dropdown is a normal floating kitty here, and this script is the i3
+# scratchpad pattern: hide parks it on an unused workspace, show pulls it to
+# the focused monitor. The shell inside it never restarts, which is the whole
+# point of the exercise.
+#
+# What is given up by not being a layer surface: `layer overlay` let the kitten
+# draw above a fullscreen window. A floating toplevel sits above tiled windows
+# but not above a fullscreen one. That is the only capability lost.
+
+emulate -L zsh
+set -o pipefail
+
+APP_ID="dropterm"
+
+# The parking lot for the hidden window. Declared per role, because an output
+# name is machine-specific: machines/<role>/niri/role.kdl.
+SCRATCH="scratch"
+
+# Opacity lives here rather than in kitty.conf because it must apply to this
+# window only -- kitty.conf is read by every kitty on the machine, including
+# the ones behind `ssh`. The kitten defaulted this to 0.85; matching it keeps
+# the dropdown reading as an overlay rather than a window that appeared.
+OPACITY="0.85"
+
+# Kept in step with default-window-height in the `^dropterm$` window rule
+# (config/niri/config.kdl) -- the rule places it at open, this reasserts it
+# after a cross-monitor move.
+HEIGHT="670"
+
+die() { print -ru2 -- "dropterm-niri: $*"; exit 1 }
+
+(( $+commands[niri] )) || die "niri not found; this script is the Wayland path"
+(( $+commands[kitty] )) || die "kitty not found"
+
+# --- find the dropdown, if it exists ----------------------------------------
+#
+# A single `niri msg --json windows` answers both questions that matter: does
+# the window exist, and is it the focused one. Parsing it in python3 rather
+# than with jq because python3 is already a hard dependency of this repo's
+# other niri helpers and jq is not in packages.txt.
+window_state() {
+    niri msg --json windows 2>/dev/null | python3 -c '
+import json, sys
+try:
+    wins = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+for w in wins:
+    if w.get("app_id") == sys.argv[1]:
+        print(w.get("id"), "focused" if w.get("is_focused") else "unfocused")
+        break
+' "$APP_ID"
+}
+
+focused_output() {
+    niri msg --json focused-output 2>/dev/null | python3 -c '
+import json, sys
+try:
+    print(json.load(sys.stdin)["name"])
+except Exception:
+    sys.exit(1)
+'
+}
+
+state=( ${(z)"$(window_state)"} )
+wid=$state[1]
+focus=$state[2]
+
+# --- not running: launch it -------------------------------------------------
+#
+# The flock is the one piece of the i3 binding worth keeping. tdrop stored the
+# window id in a file and took no lock while creating the window, so two fast
+# presses raced into two dropdowns; the kitten avoided that through kitty's
+# single-instance socket, which an ordinary `kitty` does not use. A plain
+# toplevel brings the race back, so the lock comes back with it. -n means a
+# second press during the launch is dropped rather than queued.
+if [[ -z $wid ]]; then
+    exec flock -n -o "${XDG_RUNTIME_DIR:-/tmp}/dropterm-niri.lock" \
+        kitty --app-id "$APP_ID" -o "background_opacity=$OPACITY"
+fi
+
+# --- running and focused: hide it -------------------------------------------
+#
+# --focus false keeps the focus where it is instead of following the window to
+# the parking workspace, which would leave the eye on an empty workspace.
+if [[ $focus == focused ]]; then
+    exec niri msg action move-window-to-workspace \
+        --window-id "$wid" "$SCRATCH" --focus false
+fi
+
+# --- running but not focused: bring it here ---------------------------------
+#
+# This is the case the kitten could not do. Covers both "hidden on the parking
+# workspace" and "visible on another monitor": move-window-to-monitor lands it
+# on the target monitor's active workspace either way, so the two states need
+# no distinguishing.
+out=$(focused_output) || die "could not determine the focused output"
+
+niri msg action move-window-to-monitor --id "$wid" "$out" >/dev/null 2>&1
+
+# Then reassert the geometry, because the window rule's `default-` properties
+# are open-time defaults only: a floating window carries its size across a
+# cross-monitor move rather than being re-fitted to the new output. These
+# monitors do not agree on a logical width (the two externals are 3072, the
+# built-in panel is 2560), so without this the dropdown keeps whatever width
+# it was born with and hangs 512px off the side of the narrow one. Verified by
+# moving it between all three.
+#
+# 100% rather than a computed pixel count so niri does the per-output
+# arithmetic; the height is reasserted from the same value the rule uses, which
+# also undoes any manual resize. Then pin it flush to the top-left corner of
+# the output -- a bare `0` is absolute here, where the `+0`/`-0` form these
+# options default to would be relative.
+niri msg action set-window-width --id "$wid" "100%" >/dev/null 2>&1
+niri msg action set-window-height --id "$wid" "$HEIGHT" >/dev/null 2>&1
+niri msg action move-floating-window --id "$wid" -x 0 -y 0 >/dev/null 2>&1
+
+exec niri msg action focus-window --id "$wid"

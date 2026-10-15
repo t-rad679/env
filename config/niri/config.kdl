@@ -135,13 +135,25 @@ binds {
     Mod+C hotkey-overlay-title="Control centre" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
 
     // $mod+grave in i3: the dropdown terminal. One kitty that drops from the
-    // top edge and hides again on the same key. Under i3 this is tdrop
-    // wrapping an ordinary window, with a flock around it to stop two presses
-    // racing into two dropdowns; here it is kitty's own quick-access kitten,
-    // which is a wlr-layer-shell surface (so niri never tiles it) and which
-    // serialises itself through kitty's single-instance socket (so no lock).
-    // Geometry and behaviour: config/kitty/quick-access-terminal.conf.
-    Mod+Grave hotkey-overlay-title="Dropdown terminal" { spawn "kitten" "quick-access-terminal"; }
+    // top edge and hides again on the same key, and -- like tdrop's -ma under
+    // i3 -- appears on whatever monitor is focused.
+    //
+    // This was `kitten quick-access-terminal` and is now a script, because the
+    // kitten could not follow focus. Its window is a wlr-layer-shell surface,
+    // which takes its output at creation and cannot be moved afterwards: the
+    // dropdown stayed on the monitor it was first opened on. (kitty does pass
+    // `--move-to-active-monitor`, but that flag is macOS-only.) An ordinary
+    // toplevel window niri moves between outputs freely, so the dropdown is a
+    // normal floating kitty, placed by the `^dropterm$` rule below and shown
+    // and hidden by bin/dropterm-niri -- the i3 scratchpad pattern, which
+    // moves the window rather than restarting it.
+    // spawn-sh, not spawn, for the same reason the spawn-sh-at-startup lines
+    // in the role config use it: $HOME has to be expanded. niri inherits its
+    // PATH from the session that started it, which is greetd's -- it does NOT
+    // include ~/src/env/bin, so a bare `spawn "dropterm-niri"` finds nothing
+    // and fails silently. (The binding this replaced got away with
+    // `spawn "kitten"` because that lives in /usr/bin.)
+    Mod+Grave hotkey-overlay-title="Dropdown terminal" { spawn-sh "$HOME/src/env/bin/dropterm-niri"; }
 
     // Super+Alt+L is niri's suggested lock bind; the i3 config has no lock key
     // at all, so there is no habit to preserve.
@@ -311,6 +323,39 @@ binds {
     Mod+Shift+E { quit; }
 
     Mod+Shift+P { power-off-monitors; }
+}
+
+// --- the dropdown terminal --------------------------------------------------
+//
+// Geometry for the window bin/dropterm-niri manages (Mod+Grave, above). The
+// kitten this replaced carried its own config file; an ordinary window is
+// placed by a window rule instead.
+//
+// open-floating keeps it out of the scrolling layout -- a tiled dropdown would
+// reflow the columns on the workspace it landed on every time it appeared.
+//
+// Every `default-` property here is an OPEN-TIME default, which is why the
+// script reasserts the width and position after it moves the window: a
+// floating window carries its old size across a cross-monitor move instead of
+// being re-fitted, and these monitors do not agree on a logical width. Keep
+// default-window-height below in step with HEIGHT in bin/dropterm-niri.
+window-rule {
+    match app-id=r#"^dropterm$"#
+
+    open-floating true
+
+    // Flush against the top edge of its monitor, which is tdrop's -y.
+    default-floating-position x=0 y=0 relative-to="top"
+
+    // Full width of whatever monitor it is on, which is tdrop's -w -4 without
+    // needing the border fudge. A proportion rather than a fixed width is what
+    // makes one rule correct on a 3840px monitor and the 2560px built-in panel.
+    default-column-width { proportion 1.0; }
+
+    // Height. tdrop used -h 45%; niri takes logical pixels here, and 670 is
+    // ~42% of the spellbook's 1600px built-in panel -- what the i3 dropdown
+    // felt like, and what `lines 28` worked out to under the kitten.
+    default-window-height { fixed 670; }
 }
 
 // Role-specific config. See the header: this is a fixed path, not a

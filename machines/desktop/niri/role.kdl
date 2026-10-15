@@ -12,3 +12,15 @@
 // things to port: the LightDM HDMI-3 greeter drop-in (which becomes a greetd
 // one -- see machines/spellbook/greetd/), `xset s off -dpms`, the Spotify
 // screensaver, and the Steam and gamescope window rules.
+
+// The one thing in here that is not a comment, and it is here rather than in
+// config/niri/config.kdl because a workspace is declared once: the parking
+// lot for the hidden dropdown terminal (bin/dropterm-niri, bound to Mod+Grave
+// in the shared config). Hiding it is a move to a workspace nothing is ever
+// focused to, and that workspace has to be declared to be persistent.
+//
+// No open-on-output, unlike the spellbook's, which pins it to the built-in
+// panel to keep it off the desk monitor's bar. This machine's monitor layout
+// is not settled until it actually moves to niri, and niri's own choice of
+// output is the right default until then.
+workspace "scratch"

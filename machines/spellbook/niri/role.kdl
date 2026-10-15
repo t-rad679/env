@@ -274,6 +274,23 @@ workspace "agenda" {
     open-on-output "eDP-1"
 }
 
+// The parking lot for the hidden dropdown terminal (bin/dropterm-niri, bound
+// to Mod+Grave in config/niri/config.kdl). niri has no minimize, so hiding is
+// a move to a workspace nothing is ever focused to -- the i3 scratchpad
+// pattern. A declared workspace is persistent, which is what this needs: an
+// undeclared one would be cleaned up the moment the dropdown left it, and the
+// next hide would have no workspace to name.
+//
+// Pinned to the built-in panel, by connector, for the same reason the two
+// workspaces above are: it is the one output name that is stable across docks.
+// The pin is cosmetic rather than functional -- the dropdown is pulled out of
+// here onto the focused monitor, so where it waits never shows -- but being
+// persistent it does occupy a slot in Noctalia's workspace list, and this
+// keeps that slot on the laptop's bar instead of the desk monitor's.
+workspace "scratch" {
+    open-on-output "eDP-1"
+}
+
 // google-chrome honours --class for ordinary browser windows, so each
 // profile arrives with its own app_id -- unlike the chat apps, which are
 // --app= windows and take their app_id from the URL instead. kitty honours
