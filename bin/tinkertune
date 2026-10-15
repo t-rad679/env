@@ -1,0 +1,55 @@
+#!/usr/bin/zsh
+
+# Run TinkerTune from its checkout's virtualenv.
+#
+# Usage: tinkertune [tinkertune arguments...]
+#
+# Replaces the old `alias tunetracker=~/src/tunetracker/bin/tunetracker` in
+# config/zsh/env/tunetracker.zsh. A wrapper rather than an alias because an
+# alias only exists in interactive zsh: a Claude Code skill, a systemd unit or
+# anything exec'ing `tinkertune` directly would not find it. bin/ is on PATH
+# for all of those.
+#
+# TinkerTune is a Python package, not a static binary, so this points at the
+# console script setuptools installed in the checkout's venv. There is no
+# zipapp equivalent of bin/mixxxlib here on purpose: mixxxlib is a dependency
+# TinkerTune shells out to and wants pinned at ~/.local/bin, while TinkerTune
+# itself is the thing under development -- a wrapper means `git pull` in the
+# checkout is the whole upgrade, with no rebuild step to forget.
+#
+# Resolved 2026-10-15 (TinkerTune spec revision 6). The marker now has a
+# user-level home at ~/.config/tinkertune/TINKERTUNE.md, with state and reports
+# under ~/.local/state/tinkertune/, so every command -- writing ones included --
+# works from any directory. A TINKERTUNE.md in the cwd or an ancestor still
+# wins, and keeps its state beside it.
+#
+# Spec §3's marker-less path (selection step 3) still needs
+# TINKERTUNE_ETAPI_URL: step 3 otherwise probes the constant DEFAULT_ETAPI_URL
+# = "http://localhost:8080/etapi" and this machine's Trilium listens on 37840.
+# That export lives in config/zsh/env/tinkertune.zsh -- the successor to the
+# deleted config/zsh/env/tunetracker.zsh -- and NOT here: a wrapper that injects
+# config into its own child makes `tinkertune` and `.venv/bin/tinkertune`
+# behave differently, which is the kind of difference that costs an hour to
+# find.
+#
+# This wrapper deliberately does NOT cd into the checkout. Which directory a
+# command runs in is the caller's to choose, and nothing about finding the
+# library depends on it any more.
+
+set -u
+
+readonly checkout="${TINKERTUNE_CHECKOUT:-$HOME/src/tinkertune}"
+readonly bin="$checkout/.venv/bin/tinkertune"
+
+if [[ ! -x "$bin" ]]; then
+    print -u2 "tinkertune: no runnable TinkerTune at $bin"
+    if [[ ! -d "$checkout" ]]; then
+        print -u2 "  $checkout does not exist -- clone it, or set TINKERTUNE_CHECKOUT"
+    else
+        print -u2 "  the checkout is there but its venv is not built; from $checkout run:"
+        print -u2 "    python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'"
+    fi
+    exit 127
+fi
+
+exec "$bin" "$@"
