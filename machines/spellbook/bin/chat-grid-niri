@@ -61,6 +61,12 @@
 # makes the two race at every cold login. Launcher output goes to the journal
 # (`journalctl --user -t chat-grid`) under the same identifier for the same
 # reason -- discarding it is what hid that race for as long as it did.
+#
+# Why Messenger passes --password-store=gnome-libsecret and Messages does not
+# is also in bin/chat-grid-i3, and matters more here: the reason Chrome's
+# auto-detection picks the wrong cookie-encryption key is that
+# XDG_CURRENT_DESKTOP is "niri", which it does not recognise. Both launchers
+# carry the flag so the test stays valid whichever session boots.
 
 set -u
 
@@ -166,7 +172,9 @@ else
             Messenger)
                 launch google-chrome-stable --user-data-dir="$MESSENGER_UDD" \
                     --class=messenger-chrome --no-first-run \
-                    --no-default-browser-check --app=https://www.messenger.com/ ;;
+                    --no-default-browser-check \
+                    --password-store=gnome-libsecret \
+                    --app=https://www.messenger.com/ ;;
             Messages)
                 launch google-chrome-stable --user-data-dir="$MESSAGES_UDD" \
                     --class=messages-chrome --no-first-run \

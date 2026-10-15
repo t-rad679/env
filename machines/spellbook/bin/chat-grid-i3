@@ -61,6 +61,27 @@
 # Launcher output goes to the journal (`journalctl --user -t chat-grid`)
 # rather than /dev/null: discarding it is what hid the failure above for as
 # long as it did. Retention is journald's, so nothing here has to prune.
+#
+# Why Messenger passes --password-store=gnome-libsecret, and why Messages
+# does not (yet): Chrome encrypts cookie values with a key it keeps in the
+# Secret Service, and it stamps each cookie with which key was used -- v10 is
+# a hardcoded fallback password (the "basic" store, i.e. no Secret Service),
+# v11 is the random one from gnome-keyring. Cookies written under one key are
+# unreadable under the other and Chrome drops them silently, which is what
+# logged Messenger out at every login: with no cookies at all -- including
+# datr, the one Facebook recognises the browser by -- messenger.com hits a
+# login checkpoint and demands 2FA again, so it reads as a Messenger problem
+# rather than a Chrome one. All three profiles here show the flip (every
+# ~/.config/chrome-messages cookie from Oct 3-5 is v10, the Oct 11 ones v11,
+# and Sep 28 has both), so the store choice was being made per run, not once.
+# Two things make Chrome guess wrong: XDG_CURRENT_DESKTOP=niri is not a
+# desktop its auto-detection knows, so it stops trying libsecret and takes
+# the basic store; and this script launches Chrome ~1.4s after
+# gnome-keyring at login, so whether the Secret Service answers yet is a coin
+# flip either way. Naming the store removes both. It is on Messenger only on
+# purpose -- this is the minimal test of that diagnosis, and keeping the other
+# five Chrome launch sites on auto-detection is what makes a surviving
+# Messenger login attributable. Pin the rest once it has survived a reboot.
 
 set -u
 
@@ -316,6 +337,7 @@ i3-msg -q "workspace --no-auto-back-and-forth $WS; append_layout $LAYOUT" || exi
 setsid -f systemd-cat --identifier=chat-grid \
     google-chrome-stable --user-data-dir="$MESSENGER_UDD" \
     --class=messenger-chrome --no-first-run --no-default-browser-check \
+    --password-store=gnome-libsecret \
     --app=https://www.messenger.com/
 setsid -f systemd-cat --identifier=chat-grid \
     google-chrome-stable --user-data-dir="$MESSAGES_UDD" \
