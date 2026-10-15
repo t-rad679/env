@@ -19,8 +19,7 @@
     "superpowers@claude-plugins-official": true,
     "tinkertask@tinkertask-local": true,
     "warp@claude-code-warp": true,
-    "ping-pong@ping-pong-local": true,
-    "tunetracker@tunetracker-local": true
+    "ping-pong@ping-pong-local": true
   },
   "extraKnownMarketplaces": {
     "mem0-plugins": {
@@ -45,12 +44,6 @@
       "source": {
         "source": "directory",
         "path": "~/src/ping-pong-skills"
-      }
-    },
-    "tunetracker-local": {
-      "source": {
-        "source": "directory",
-        "path": "~/src/tunetracker"
       }
     }
   },
