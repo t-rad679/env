@@ -1,7 +1,3 @@
-# graphify
-- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
-When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
-
 # Git Worktrees
 - Worktrees should go in `~/src/.worktrees/<project-name>`.
 - Use `gwt` to create new worktrees (not `git worktree add` directly).
@@ -18,6 +14,9 @@ When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` 
   ```
   Not `related: ["[[Note A]]", "[[Note B]]"]`. Applies to every array-valued property (`related`, `projects`, `contexts`, `tags`, etc.).
 
+# Trilium
+- Refer to Trilium notes by their names, not their IDs. If there is ambiguity, give a partial path (e.g. `Decisions → Cycle 2 → [Note Name]`).
+
 # Machines
 - I use two Arch Linux machines running i3: a desktop and a spellbook. Both are provisioned from the env repo at `~/src/env` (i3 config at `~/src/env/config/i3/`, with role-only i3 config under `~/src/env/machines/<role>/i3/`).
 - `$MACHINE_ROLE` (`desktop` or `spellbook`, from `~/.config/machine-role.env`; defaults to `desktop` when unset) says which machine a shell is on; desktop-only things (gaming, headless Obsidian, Claude remote control, the HDMI-3 greeter config) live under `~/src/env/machines/desktop/`.
@@ -32,7 +31,6 @@ When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` 
 
 # Memory
 - **mem0 is the primary memory store.** Learnings, decisions, project state, and my preferences belong there.
-- **Be proactive, not just reactive to bugs/gotchas.** Capture ongoing project state (in-progress reorgs, workflow changes, structural decisions) and my preferences (what I like when you do, tone/formatting/process choices I confirm or correct) — not only hard technical gotchas. If unsure whether something is memory-worthy, ask me rather than silently deciding either way.
 - **Check mem0 often.** At minimum: when starting a new task, and whenever significant new information is revealed mid-conversation. Don't wait to be asked.
 - **Mind the query budget.** mem0 search/write calls are rate-limited, so don't fire off redundant or overlapping searches — batch a few well-angled queries (e.g. 2-4 varied `search_memories` calls) when you genuinely need them rather than querying reflexively on every turn.
 - **Local file-based memory (project `memory/` dir + `MEMORY.md`) is legacy.** Existing entries there are still valid context and worth reading, but don't write new ones — put new memories in mem0 instead.
