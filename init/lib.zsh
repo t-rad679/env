@@ -144,3 +144,27 @@ sudo_pam_add_line() {
     fi
     print "    added '$line' to $file"
 }
+
+# sudo_install_file SRC DEST
+# Copy SRC to the root-owned DEST (mode 644, parent dirs created) unless DEST
+# is already a real file with the same contents. For files that must not be
+# symlinks into $HOME: systemd reads units and drop-ins before /home is
+# mounted, so a link into ~/src/env would dangle at boot. DEST belongs to
+# this repo, so a differing DEST is overwritten, not backed up.
+# Sets REPLY to "installed" or "unchanged" so the caller can daemon-reload
+# only on change; returns non-zero (after a FAILED line on stderr) on failure.
+sudo_install_file() {
+    local src="$1" dest="$2"
+    REPLY=unchanged
+    [[ ! -L "$dest" ]] && cmp -s "$src" "$dest" && return 0
+    if [[ -L "$dest" ]] && ! sudo rm "$dest"; then
+        print -u2 "    FAILED to install $src -> $dest (rm of the old symlink failed)"
+        return 1
+    fi
+    if ! sudo install -D -m644 "$src" "$dest"; then
+        print -u2 "    FAILED to install $src -> $dest (install failed)"
+        return 1
+    fi
+    REPLY=installed
+    print "    installed $dest"
+}

@@ -1,0 +1,53 @@
+#!/usr/bin/zsh
+# gemma-swap small|big -- point the Ollama alias "gemma" at the small or big
+# Gemma, unload every other model from the GPU, and preload the new one.
+# Run by gemma-gaming.service (small while a gamescope session runs, big when
+# it ends) or by hand. Clients should request the model "gemma".
+# Design: docs/superpowers/specs/2026-10-09-gemma-gaming-swap-design.md
+
+readonly ALIAS=gemma:latest
+readonly API=http://127.0.0.1:11434
+typeset -A MODELS=( small gemma3:4b big gemma3:12b )
+
+die() { print -u2 "gemma-swap: $*"; exit 1 }
+
+# id_of NAME -- NAME's model ID as `ollama list` shows it (empty: not pulled)
+id_of() { ollama list | awk -v n="$1" '$1 == n { print $2 }' }
+# name_for ID -- a name to stop a loaded model by. Never the alias: once it is
+# repointed, "gemma" resolves to the new target, not the model still loaded.
+name_for() { ollama list | awk -v i="$1" -v a=$ALIAS '$2 == i && $1 != a { print $1; exit }' }
+
+(( $# == 1 )) && [[ -n ${MODELS[$1]} ]] || die "usage: gemma-swap small|big"
+target=$MODELS[$1]
+
+target_id=$(id_of $target)
+[[ -n $target_id ]] || die "$target is not pulled -- run: ollama pull $target"
+
+loaded=( ${(f)"$(ollama ps | awk 'NR > 1 { print $2 }')"} )
+if [[ $(id_of $ALIAS) == $target_id && $loaded == $target_id ]]; then
+    print "gemma-swap: gemma is already $target and loaded"
+    exit 0
+fi
+
+# Repoint first, unload second: from here on every request for "gemma" gets
+# the target, so nothing can reload the old model in between.
+ollama cp $target $ALIAS || die "ollama cp $target $ALIAS failed"
+
+for id in $loaded; do
+    [[ $id == $target_id ]] && continue
+    name=$(name_for $id)
+    if [[ -z $name ]]; then
+        print -u2 "gemma-swap: loaded model $id has no name to stop it by -- skipping"
+        continue
+    fi
+    ollama stop $name || print -u2 "gemma-swap: ollama stop $name failed"
+done
+
+# Preload, so the first real request doesn't wait for the load.
+curl -sf --max-time 120 $API/api/generate -d "{\"model\":\"$ALIAS\"}" >/dev/null \
+    || die "preloading $target as gemma failed"
+# Contract: success means the target is the only model left on the GPU.
+leftover=( ${(f)"$(ollama ps | awk 'NR > 1 { print $2 }')"} )
+leftover=( ${leftover:#$target_id} )
+(( $#leftover == 0 )) || die "still loaded after the swap: ${(j:, :)leftover}"
+print "gemma-swap: gemma -> $target, loaded"
